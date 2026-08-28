@@ -6,6 +6,9 @@ import asyncio
 import os
 import subprocess
 import sys
+import logging
+import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -17,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .controller import SimulationController
 from .auth import COOKIE_NAME, authenticate, configured_users, create_session, read_session
+from .logging_config import configure_logging, correlation_id
 
 DIRECTORY = Path(__file__).parent
 
@@ -35,6 +39,8 @@ def load_local_environment() -> None:
 
 
 load_local_environment()
+configure_logging()
+LOGGER = logging.getLogger("dashboard.api")
 controller = SimulationController()
 
 
@@ -152,6 +158,9 @@ def authentication_enabled() -> bool:
 
 @app.middleware("http")
 async def enforce_dashboard_access(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))[:100]
+    context_token = correlation_id.set(request_id)
+    started = time.perf_counter()
     path = request.url.path
     user = read_session(request.cookies.get(COOKIE_NAME))
     login_username = None
@@ -162,13 +171,23 @@ async def enforce_dashboard_access(request: Request, call_next):
             pass
     request.state.user = user
     exempt = path == "/" or path.startswith("/static/") or path.startswith("/api/auth/")
+    access_response = None
     if authentication_enabled() and path.startswith("/api/") and not exempt:
         if user is None:
-            return JSONResponse({"detail": "Authentication required"}, status_code=401)
-        admin_only = path in {"/api/config", "/api/security", "/api/database", "/api/system/restart"}
-        if admin_only and user.role != "admin":
-            return JSONResponse({"detail": "Administrator role required"}, status_code=403)
-    response = await call_next(request)
+            access_response = JSONResponse({"detail": "Authentication required"}, status_code=401)
+        admin_only = path in {"/api/config", "/api/security", "/api/database", "/api/diagnostics", "/api/system/restart"}
+        if access_response is None and admin_only and user.role != "admin":
+            access_response = JSONResponse({"detail": "Administrator role required"}, status_code=403)
+    if access_response is not None:
+        response = access_response
+    else:
+        try:
+            response = await call_next(request)
+        except Exception:
+            LOGGER.exception("http_request_failed", extra={"fields": {"method": request.method, "path": path, "user": user.username if user else None, "role": user.role if user else None}})
+            correlation_id.reset(context_token)
+            raise
+    response.headers["X-Request-ID"] = request_id
     if path.startswith("/api/") and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
         audit_user = user
         if path == "/api/auth/login" and response.status_code == 200 and login_username:
@@ -181,6 +200,8 @@ async def enforce_dashboard_access(request: Request, call_next):
                 controller.audit_operator_action(audit_user.username, audit_user.role, request.method, path, response.status_code, request.client.host if request.client else None)
             except Exception:
                 pass
+    LOGGER.info("http_request", extra={"fields": {"method": request.method, "path": path, "status": response.status_code, "duration_ms": round((time.perf_counter() - started) * 1000, 2), "user": user.username if user else None, "role": user.role if user else None, "client": request.client.host if request.client else None}})
+    correlation_id.reset(context_token)
     return response
 
 
@@ -253,6 +274,11 @@ async def get_configuration() -> dict:
 @app.get("/api/database")
 async def database_view() -> dict:
     return controller.database_snapshot()
+
+
+@app.get("/api/diagnostics")
+async def diagnostics() -> dict:
+    return controller.diagnostics()
 
 
 @app.get("/api/security")

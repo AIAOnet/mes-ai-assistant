@@ -63,6 +63,12 @@ class SQLServerRepository:
     def __init__(self, connection_string: str) -> None:
         self.connection_string = connection_string
 
+    def health_check(self) -> bool:
+        with _connect(self.connection_string) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                return cursor.fetchone()[0] == 1
+
     def persist_reading(
         self, machine_id: str, tag_name: str, value: object
     ) -> None:

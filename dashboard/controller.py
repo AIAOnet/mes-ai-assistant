@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import os
+import platform
+import sys
+import time
 from contextlib import suppress
 from datetime import datetime, timezone
 
@@ -14,6 +17,7 @@ from mes.opc_client import MESOPCClient
 from mes.mqtt_client import MESMQTTTransport
 from mes.production import ProductionOrder, ProductionStatus
 from opc.server import OPCUAServer
+from .logging_config import recent_errors
 
 DEFAULT_SECURITY = {
     "dashboard": {"authentication_enabled": False, "session_timeout_minutes": 30, "audit_enabled": True},
@@ -46,6 +50,7 @@ class SimulationController:
         self.production_orders: list[ProductionOrder] = []
         self.active_order: ProductionOrder | None = None
         self._last_machine_count = self.machine.production_count
+        self._started_at = time.monotonic()
 
     async def start(self) -> None:
         await self.opc_server.start()
@@ -243,6 +248,34 @@ class SimulationController:
     def health(self) -> dict:
         transport_connected = self.mqtt_transport.connected if self.communication_mode == "MQTT" else self.opc_connected
         return {"status": "healthy" if transport_connected else "starting", "transport": self.communication_mode, "transport_connected": transport_connected, "database_configured": self.processor.persistence is not None}
+
+    def diagnostics(self) -> dict:
+        database_connected = False
+        database_error = None
+        if self.processor.persistence is not None:
+            try:
+                database_connected = self.processor.persistence.health_check()
+            except Exception as error:
+                database_error = type(error).__name__
+        return {
+            "overall": "HEALTHY" if self.health()["transport_connected"] and database_connected else "DEGRADED",
+            "services": {
+                "dashboard": {"connected": True, "detail": "API process responding"},
+                "database": {"connected": database_connected, "detail": database_error or "SELECT 1 succeeded"},
+                "transport": {"connected": self.health()["transport_connected"], "detail": self.communication_mode},
+                "opc_ua": {"connected": self.opc_connected, "detail": self.settings["security"]["opc_ua"]["security_mode"]},
+                "mqtt": {"connected": self.mqtt_transport.connected, "detail": f"{self.mqtt_transport.host}:{self.mqtt_transport.port}"},
+            },
+            "runtime": {
+                "containerized": bool(os.getenv("MES_CONTAINERIZED")),
+                "python": platform.python_version(),
+                "platform": platform.system(),
+                "process_id": os.getpid(),
+                "uptime_seconds": round(time.monotonic() - self._started_at, 1),
+                "executable": sys.executable,
+            },
+            "recent_errors": recent_errors(),
+        }
 
     def audit_operator_action(self, username: str, role: str, method: str, path: str, status: int, client_address: str | None) -> None:
         dashboard_security = self.settings["security"]["dashboard"]

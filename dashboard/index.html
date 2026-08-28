@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=9.4">
+  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=10.2">
 </head>
 <body>
   <header><div><p class="eyebrow">MES LEARNING ENVIRONMENT</p><h1>MACHINE-01</h1></div><div class="header-actions"><div class="identity" id="identity" hidden><span id="identity-name">—</span><small id="identity-role">—</small><button id="logout">Sign out</button></div><div class="connection"><span id="connection-dot"></span><span id="connection">Connecting…</span></div></div></header>
   <main>
-    <nav class="tab-nav" aria-label="Dashboard views"><button class="tab-button selected" data-tab="overview-panel">Overview</button><button class="tab-button" data-tab="production-panel">Production</button><button class="tab-button" data-tab="communication-panel">Communication</button><button class="tab-button" data-tab="data-flow-panel">Data Flow</button><button class="tab-button" data-tab="maintenance-panel">Maintenance Tasks <span id="maintenance-tab-count">0</span></button><button class="tab-button" data-admin data-tab="security-panel">Security</button><button class="tab-button" data-admin data-tab="configuration-panel">Configuration</button><button class="tab-button" data-admin data-tab="database-panel">Database</button></nav>
+    <nav class="tab-nav" aria-label="Dashboard views"><button class="tab-button selected" data-tab="overview-panel">Overview</button><button class="tab-button" data-tab="production-panel">Production</button><button class="tab-button" data-tab="communication-panel">Communication</button><button class="tab-button" data-tab="data-flow-panel">Data Flow</button><button class="tab-button" data-tab="maintenance-panel">Maintenance Tasks <span id="maintenance-tab-count">0</span></button><button class="tab-button" data-admin data-tab="security-panel">Security</button><button class="tab-button" data-admin data-tab="configuration-panel">Configuration</button><button class="tab-button" data-admin data-tab="diagnostics-panel">Diagnostics</button><button class="tab-button" data-admin data-tab="database-panel">Database</button></nav>
     <section id="overview-panel" class="tab-page selected">
     <section class="toolbar" aria-label="Simulation controls">
       <div><span class="toolbar-label">Simulation</span><button data-command="/api/simulation/start">Run</button><button data-command="/api/simulation/pause">Pause</button></div>
@@ -79,6 +79,11 @@
       <div class="database-heading"><div><p class="eyebrow">WORK MANAGEMENT</p><h2>Maintenance Tasks</h2><p>Review, start, and complete work created from machine alarms</p></div></div>
       <article class="panel maintenance-page-panel"><div class="panel-heading"><h2>Task queue</h2><span id="task-count">0</span></div><div id="tasks" class="empty">No maintenance tasks</div></article>
     </section>
+    <section id="diagnostics-panel" class="tab-page" hidden>
+      <div class="database-heading"><div><p class="eyebrow">PHASE 10 · OPERATIONS</p><h2>Diagnostics</h2><p>Live dependency health, safe runtime metadata, and recent application errors</p></div><button id="refresh-diagnostics">Refresh diagnostics</button></div>
+      <section class="diagnostics-summary"><article class="status-card"><span>Overall</span><strong id="diagnostic-overall">—</strong></article><article class="status-card"><span>Runtime</span><strong id="diagnostic-runtime">—</strong><small id="diagnostic-python">—</small></article><article class="status-card"><span>Uptime</span><strong id="diagnostic-uptime">—</strong></article><article class="status-card"><span>Process</span><strong id="diagnostic-process">—</strong></article></section>
+      <section class="diagnostics-layout"><article class="panel"><div class="panel-heading"><h2>Service health</h2><span>Live checks</span></div><div id="diagnostic-services" class="empty">Loading diagnostics…</div></article><article class="panel"><div class="panel-heading"><h2>Recent errors</h2><span>Latest 50 · secrets redacted</span></div><div id="diagnostic-errors" class="empty">No application errors</div></article></section>
+    </section>
     <section id="database-panel" class="tab-page" hidden>
       <div class="database-heading"><div><p class="eyebrow">SQL SERVER · MesSimulator</p><h2>Database explorer</h2><p>Latest 50 rows per table · read-only</p></div><button id="refresh-database">Refresh database</button></div>
       <div class="database-shell">
@@ -100,5 +105,5 @@
     </section>
   </main>
   <div id="login-screen" class="login-screen" hidden><form id="login-form" class="login-card"><p class="eyebrow">SECURE DASHBOARD</p><h2>Sign in to MES</h2><p>Use your assigned administrator or operator account.</p><label>Username<input id="login-username" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><span id="login-error" role="alert"></span></form></div>
-  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=9.4"></script>
+  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=10.2"></script>
 </body></html>
