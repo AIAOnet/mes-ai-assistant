@@ -299,3 +299,26 @@ reach directly into the machine.
 - A produced unit is counted every five running ticks.
 - Fault controls affect only the physical simulation. They never create MES
   alarms directly.
+
+## Phase 10, step 1: Containerized reliable startup
+
+The complete application now starts with one command:
+
+```powershell
+docker compose up -d --build
+```
+
+Compose waits for SQL Server and the mutual-TLS MQTT broker to become healthy,
+runs the idempotent database bootstrap, and then starts the dashboard at
+`http://127.0.0.1:8000`. The dashboard image contains application code only;
+`.env`, MQTT credentials, and OPC/MQTT certificates are mounted at runtime.
+
+Inspect service health with:
+
+```powershell
+docker compose ps
+```
+
+The dashboard exposes unauthenticated `/healthz` readiness information for the
+container health check. The admin **Restart dashboard** action exits the main
+container process and Compose restarts it automatically.
