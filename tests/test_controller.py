@@ -29,6 +29,12 @@ class SimulationControllerTests(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.15)
         self.assertEqual(self.controller.machine.pressure, pressure)
 
+    async def test_health_reports_connected_transport(self) -> None:
+        health = self.controller.health()
+        self.assertEqual(health["status"], "healthy")
+        self.assertTrue(health["transport_connected"])
+        self.assertEqual(health["transport"], "OPC_UA")
+
     async def test_machine_stop_propagates_through_opc_to_mes(self) -> None:
         await self.controller.stop_machine()
         async with asyncio.timeout(2):
