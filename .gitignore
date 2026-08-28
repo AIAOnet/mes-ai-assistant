@@ -6,3 +6,4 @@ certs/opc/
 certs/mqtt/
 mqtt/passwords
 *.log
+backups/
