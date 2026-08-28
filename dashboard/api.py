@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from .controller import SimulationController
-from .auth import COOKIE_NAME, authenticate, configured_users, create_session, read_session
+from .auth import COOKIE_NAME, authenticate, configured_users, create_session, read_session, secure_cookie_enabled
 from .logging_config import configure_logging, correlation_id
 from .monitoring import monitoring
 
@@ -190,6 +190,10 @@ async def enforce_dashboard_access(request: Request, call_next):
             correlation_id.reset(context_token)
             raise
     response.headers["X-Request-ID"] = request_id
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"
     if path.startswith("/api/") and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
         audit_user = user
         if path == "/api/auth/login" and response.status_code == 200 and login_username:
@@ -245,7 +249,7 @@ async def login(credentials: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     timeout = controller.settings["security"]["dashboard"]["session_timeout_minutes"]
     response = JSONResponse({"username": user.username, "role": user.role})
-    response.set_cookie(COOKIE_NAME, create_session(user, timeout), max_age=timeout * 60, httponly=True, samesite="strict", secure=False)
+    response.set_cookie(COOKIE_NAME, create_session(user, timeout), max_age=timeout * 60, httponly=True, samesite="strict", secure=secure_cookie_enabled())
     return response
 
 

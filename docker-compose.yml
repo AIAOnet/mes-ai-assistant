@@ -13,7 +13,7 @@ services:
       MSSQL_PID: Developer
       MSSQL_SA_PASSWORD: "${MES_SQL_PASSWORD:-MesLearning_2026!}"
     ports:
-      - "1433:1433"
+      - "${MES_BIND_ADDRESS:-127.0.0.1}:1433:1433"
     volumes:
       - mes-sql-data:/var/opt/mssql
     healthcheck:
@@ -28,7 +28,7 @@ services:
     image: eclipse-mosquitto:2.0
     container_name: mes-mqtt-broker
     ports:
-      - "8883:8883"
+      - "${MES_BIND_ADDRESS:-127.0.0.1}:8883:8883"
     volumes:
       - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - ./mqtt/passwords:/mosquitto/config/passwords
@@ -67,7 +67,7 @@ services:
       MES_MQTT_HOST: "mqtt-broker"
       MES_MQTT_PORT: "8883"
     ports:
-      - "8000:8000"
+      - "${MES_BIND_ADDRESS:-127.0.0.1}:8000:8000"
     volumes:
       - ./certs/opc:/app/certs/opc:ro
       - ./certs/mqtt:/app/certs/mqtt:ro

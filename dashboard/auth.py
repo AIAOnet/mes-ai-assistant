@@ -14,6 +14,10 @@ from dataclasses import dataclass
 COOKIE_NAME = "mes_session"
 
 
+def secure_cookie_enabled() -> bool:
+    return os.getenv("MES_COOKIE_SECURE", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True)
 class User:
     username: str
