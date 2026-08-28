@@ -350,3 +350,33 @@ The admin **Diagnostics** tab also shows request totals, error rate, average and
 critical alert is raised when SQL Server or the selected transport is
 unavailable. A warning is raised after three server failures occur within the
 latest 20 requests.
+
+## Phase 10, step 4: Backup and disaster recovery
+
+Create a checksummed SQL Server backup with 14-day retention:
+
+```powershell
+.\scripts\backup-database.ps1
+```
+
+Backups are written to the ignored `backups` directory. Override retention with
+`-RetentionDays 30`. Each run performs `RESTORE VERIFYONLY` and prints a SHA-256
+hash. Prove that a backup can actually be recovered into a temporary database:
+
+```powershell
+.\scripts\test-database-recovery.ps1 -BackupPath .\backups\MesSimulator-YYYYMMDD-HHMMSS.bak
+```
+
+Restore the application database only during a maintenance window. The explicit
+confirmation switch prevents an accidental overwrite; the dashboard restarts
+afterward to refresh its connection pool:
+
+```powershell
+.\scripts\restore-database.ps1 -BackupPath .\backups\MesSimulator-YYYYMMDD-HHMMSS.bak -ConfirmRestore
+```
+
+Treat `.env`, `config`, `certs`, and `mqtt/passwords` as a separate encrypted
+configuration backup. They contain credentials or private keys and must never be
+stored in Git or beside unencrypted database backups. For recovery: restore those
+files first, run `docker compose up -d`, restore the database, run the recovery
+test, then confirm `docker compose ps` and the admin Diagnostics tab are healthy.
