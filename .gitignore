@@ -5,3 +5,4 @@ __pycache__/
 certs/opc/
 certs/mqtt/
 mqtt/passwords
+*.log
