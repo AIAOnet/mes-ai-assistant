@@ -9,6 +9,10 @@ Machine -> PLC -> OPC UA / MQTT -> MES -> SQL Server -> Dashboard
 Development is intentionally phased. Only move to the next phase after the
 current phase works and its tests pass.
 
+The maintained documentation set starts at [docs/README.md](docs/README.md),
+including architecture, operator/developer guides, communication, configuration,
+lifecycles, operations and requirements traceability.
+
 ## Phase 1: Machine and PLC tags
 
 Run the simulation from the repository root:
