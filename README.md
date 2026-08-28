@@ -322,3 +322,17 @@ docker compose ps
 The dashboard exposes unauthenticated `/healthz` readiness information for the
 container health check. The admin **Restart dashboard** action exits the main
 container process and Compose restarts it automatically.
+
+## Phase 10, step 2: Structured logs and diagnostics
+
+Application request logs are emitted as one-line JSON with a correlation ID,
+HTTP status, duration, authenticated user and role, and client address. Supply
+an `X-Request-ID` header to carry an existing correlation ID across a call;
+otherwise the dashboard creates one and returns it in the response header.
+Passwords, secrets, tokens, cookies, authorization values, and private-key
+fields are redacted before logging.
+
+The admin-only **Diagnostics** tab shows live SQL, OPC UA, MQTT, and dashboard
+health; safe runtime/container metadata; uptime; and the latest 50 in-memory
+application errors. Docker rotates each service's JSON logs at five 10 MB
+files. Use `docker compose logs dashboard` for the structured stream.
