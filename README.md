@@ -380,3 +380,16 @@ configuration backup. They contain credentials or private keys and must never be
 stored in Git or beside unencrypted database backups. For recovery: restore those
 files first, run `docker compose up -d`, restore the database, run the recovery
 test, then confirm `docker compose ps` and the admin Diagnostics tab are healthy.
+
+## Phase 10, step 5: Production readiness
+
+Run the repeatable deployment audit with:
+
+```powershell
+.\scripts\production-readiness.ps1
+```
+
+The audit validates secrets are configured but untracked, required certificates
+exist, Compose is valid, all containers are healthy, security headers and metrics
+respond, and a database backup exists. See `PRODUCTION_READINESS.md` for the final
+pilot decision, verified controls, deployment-owner actions, and accepted limits.
