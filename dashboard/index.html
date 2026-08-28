@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=10.2">
+  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=10.3">
 </head>
 <body>
   <header><div><p class="eyebrow">MES LEARNING ENVIRONMENT</p><h1>MACHINE-01</h1></div><div class="header-actions"><div class="identity" id="identity" hidden><span id="identity-name">—</span><small id="identity-role">—</small><button id="logout">Sign out</button></div><div class="connection"><span id="connection-dot"></span><span id="connection">Connecting…</span></div></div></header>
@@ -82,7 +82,8 @@
     <section id="diagnostics-panel" class="tab-page" hidden>
       <div class="database-heading"><div><p class="eyebrow">PHASE 10 · OPERATIONS</p><h2>Diagnostics</h2><p>Live dependency health, safe runtime metadata, and recent application errors</p></div><button id="refresh-diagnostics">Refresh diagnostics</button></div>
       <section class="diagnostics-summary"><article class="status-card"><span>Overall</span><strong id="diagnostic-overall">—</strong></article><article class="status-card"><span>Runtime</span><strong id="diagnostic-runtime">—</strong><small id="diagnostic-python">—</small></article><article class="status-card"><span>Uptime</span><strong id="diagnostic-uptime">—</strong></article><article class="status-card"><span>Process</span><strong id="diagnostic-process">—</strong></article></section>
-      <section class="diagnostics-layout"><article class="panel"><div class="panel-heading"><h2>Service health</h2><span>Live checks</span></div><div id="diagnostic-services" class="empty">Loading diagnostics…</div></article><article class="panel"><div class="panel-heading"><h2>Recent errors</h2><span>Latest 50 · secrets redacted</span></div><div id="diagnostic-errors" class="empty">No application errors</div></article></section>
+      <section class="monitoring-summary"><article class="status-card"><span>HTTP requests</span><strong id="monitor-requests">—</strong></article><article class="status-card"><span>Error rate</span><strong id="monitor-error-rate">—</strong></article><article class="status-card"><span>Average response</span><strong id="monitor-average">—</strong></article><article class="status-card"><span>P95 response</span><strong id="monitor-p95">—</strong></article></section>
+      <section class="diagnostics-layout"><article class="panel"><div class="panel-heading"><h2>Service health</h2><span>Live checks</span></div><div id="diagnostic-services" class="empty">Loading diagnostics…</div></article><article class="panel"><div class="panel-heading"><h2>Active alerts</h2><span>Dependency and API failures</span></div><div id="monitor-alerts" class="empty">No active alerts</div></article><article class="panel"><div class="panel-heading"><h2>Request trend</h2><span>Recent response times</span></div><div id="monitor-trend" class="monitor-trend empty">No request samples</div></article><article class="panel"><div class="panel-heading"><h2>Recent errors</h2><span>Latest 50 · secrets redacted</span></div><div id="diagnostic-errors" class="empty">No application errors</div></article></section>
     </section>
     <section id="database-panel" class="tab-page" hidden>
       <div class="database-heading"><div><p class="eyebrow">SQL SERVER · MesSimulator</p><h2>Database explorer</h2><p>Latest 50 rows per table · read-only</p></div><button id="refresh-database">Refresh database</button></div>
@@ -105,5 +106,5 @@
     </section>
   </main>
   <div id="login-screen" class="login-screen" hidden><form id="login-form" class="login-card"><p class="eyebrow">SECURE DASHBOARD</p><h2>Sign in to MES</h2><p>Use your assigned administrator or operator account.</p><label>Username<input id="login-username" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><span id="login-error" role="alert"></span></form></div>
-  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=10.2"></script>
+  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=10.3"></script>
 </body></html>

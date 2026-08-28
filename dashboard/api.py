@@ -15,12 +15,13 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field, model_validator
 from typing import Literal
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from .controller import SimulationController
 from .auth import COOKIE_NAME, authenticate, configured_users, create_session, read_session
 from .logging_config import configure_logging, correlation_id
+from .monitoring import monitoring
 
 DIRECTORY = Path(__file__).parent
 
@@ -175,7 +176,7 @@ async def enforce_dashboard_access(request: Request, call_next):
     if authentication_enabled() and path.startswith("/api/") and not exempt:
         if user is None:
             access_response = JSONResponse({"detail": "Authentication required"}, status_code=401)
-        admin_only = path in {"/api/config", "/api/security", "/api/database", "/api/diagnostics", "/api/system/restart"}
+        admin_only = path in {"/api/config", "/api/security", "/api/database", "/api/diagnostics", "/api/monitoring", "/api/system/restart"}
         if access_response is None and admin_only and user.role != "admin":
             access_response = JSONResponse({"detail": "Administrator role required"}, status_code=403)
     if access_response is not None:
@@ -184,6 +185,7 @@ async def enforce_dashboard_access(request: Request, call_next):
         try:
             response = await call_next(request)
         except Exception:
+            monitoring.record_request(request.method, path, 500, time.perf_counter() - started)
             LOGGER.exception("http_request_failed", extra={"fields": {"method": request.method, "path": path, "user": user.username if user else None, "role": user.role if user else None}})
             correlation_id.reset(context_token)
             raise
@@ -200,7 +202,9 @@ async def enforce_dashboard_access(request: Request, call_next):
                 controller.audit_operator_action(audit_user.username, audit_user.role, request.method, path, response.status_code, request.client.host if request.client else None)
             except Exception:
                 pass
-    LOGGER.info("http_request", extra={"fields": {"method": request.method, "path": path, "status": response.status_code, "duration_ms": round((time.perf_counter() - started) * 1000, 2), "user": user.username if user else None, "role": user.role if user else None, "client": request.client.host if request.client else None}})
+    duration = time.perf_counter() - started
+    monitoring.record_request(request.method, path, response.status_code, duration)
+    LOGGER.info("http_request", extra={"fields": {"method": request.method, "path": path, "status": response.status_code, "duration_ms": round(duration * 1000, 2), "user": user.username if user else None, "role": user.role if user else None, "client": request.client.host if request.client else None}})
     correlation_id.reset(context_token)
     return response
 
@@ -214,6 +218,11 @@ async def dashboard() -> FileResponse:
 async def health() -> JSONResponse:
     result = controller.health()
     return JSONResponse(result, status_code=200 if result["transport_connected"] else 503)
+
+
+@app.get("/metrics", include_in_schema=False)
+async def metrics() -> PlainTextResponse:
+    return PlainTextResponse(monitoring.prometheus(controller.diagnostics()["services"]), media_type="text/plain; version=0.0.4")
 
 
 @app.get("/api/auth/me")
@@ -279,6 +288,11 @@ async def database_view() -> dict:
 @app.get("/api/diagnostics")
 async def diagnostics() -> dict:
     return controller.diagnostics()
+
+
+@app.get("/api/monitoring")
+async def monitoring_snapshot() -> dict:
+    return monitoring.snapshot(controller.diagnostics()["services"])
 
 
 @app.get("/api/security")
