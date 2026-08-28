@@ -1,0 +1,45 @@
+flowchart LR
+  subgraph Origins[Origins and physical mutation]
+    M["MachineSimulator.pressure<br/>float, default 70.0 bar"]
+    T["MachineSimulator.tick()"]
+    F["raise_pressure() fault flag"]
+    R["reset() = 70.0"]
+  end
+
+  subgraph Transport[PLC and OPC UA transport]
+    P["PLC tag<br/>Machine01.Pressure"]
+    O["OPC UA node<br/>Machine01/Pressure"]
+    S["OPC UA subscription<br/>DataChangeNotification"]
+  end
+
+  subgraph MES[MES checking and effects]
+    C["EventProcessor.latest_tags"]
+    Q["ThresholdRuleEngine"]
+    CFG["settings.json<br/>critical 100 / recover 90"]
+    E["CONDITION_ENTERED / RECOVERED"]
+    A["HIGH_PRESSURE Alarm<br/>ACTIVE / RESOLVED"]
+  end
+
+  subgraph Storage[SQL Server storage]
+    MR["MachineReadings<br/>TagName + NumericValue"]
+    EV["Events<br/>ConditionName + NumericValue"]
+    AL["Alarms<br/>TriggeredValue + Status"]
+    AU["AlarmAudit<br/>ACTIVE → RESOLVED"]
+  end
+
+  T -->|MUTATES| M
+  F -->|AFFECTS tick delta| M
+  R -->|WRITES| M
+  M -->|TRANSFORMS_TO| P
+  P -->|WRITES changed value| O
+  O -->|EMITS| S
+  S -->|CONSUMES| C
+  C -->|STORES_IN| MR
+  C -->|CALLS| Q
+  CFG -->|CONSTRAINS| Q
+  Q -->|EMITS on state transition| E
+  E -->|TRANSFORMS_TO| A
+  E -->|STORES_IN| EV
+  A -->|STORES_IN| AL
+  AL -->|EMITS via SQL trigger| AU
+

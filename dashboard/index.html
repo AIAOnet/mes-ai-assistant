@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=9.4">
+</head>
+<body>
+  <header><div><p class="eyebrow">MES LEARNING ENVIRONMENT</p><h1>MACHINE-01</h1></div><div class="header-actions"><div class="identity" id="identity" hidden><span id="identity-name">—</span><small id="identity-role">—</small><button id="logout">Sign out</button></div><div class="connection"><span id="connection-dot"></span><span id="connection">Connecting…</span></div></div></header>
+  <main>
+    <nav class="tab-nav" aria-label="Dashboard views"><button class="tab-button selected" data-tab="overview-panel">Overview</button><button class="tab-button" data-tab="production-panel">Production</button><button class="tab-button" data-tab="communication-panel">Communication</button><button class="tab-button" data-tab="data-flow-panel">Data Flow</button><button class="tab-button" data-tab="maintenance-panel">Maintenance Tasks <span id="maintenance-tab-count">0</span></button><button class="tab-button" data-admin data-tab="security-panel">Security</button><button class="tab-button" data-admin data-tab="configuration-panel">Configuration</button><button class="tab-button" data-admin data-tab="database-panel">Database</button></nav>
+    <section id="overview-panel" class="tab-page selected">
+    <section class="toolbar" aria-label="Simulation controls">
+      <div><span class="toolbar-label">Simulation</span><button data-command="/api/simulation/start">Run</button><button data-command="/api/simulation/pause">Pause</button></div>
+      <div><span class="toolbar-label">Machine</span><button data-command="/api/machine/start">Start</button><button data-command="/api/machine/stop">Stop</button><button data-command="/api/machine/reset">Reset</button></div>
+      <div><span class="toolbar-label">Fault injection</span><button class="warning" data-command="/api/faults/pressure">Raise pressure</button><button class="warning" data-command="/api/faults/temperature">Raise temperature</button></div>
+    </section>
+    <section class="status-row">
+      <article class="status-card"><span>Simulation</span><strong id="simulation">—</strong></article><article class="status-card"><span>Machine</span><strong id="machine-status">—</strong></article><article class="status-card"><span id="communication-label">Communication</span><strong id="opc-status">—</strong></article><article class="status-card wide"><span id="endpoint-label">Endpoint</span><code id="endpoint">—</code></article>
+    </section>
+    <section class="metrics" aria-label="Live PLC values">
+      <article class="gauge-card"><span>Pressure</span><div class="speedometer pressure-dial" id="pressure-gauge" role="meter" aria-label="Pressure" aria-valuemin="0" aria-valuemax="150"><div class="gauge-arc"></div><div class="gauge-needle"></div><div class="gauge-hub"></div></div><div class="gauge-scale"><small>0</small><small>50</small><small>100</small><small>150</small></div><div class="gauge-reading"><strong id="pressure">—</strong><small>bar</small></div><div class="zone-key"><i></i>Normal ≤90 <i></i>Warning 90–100 <i></i>Critical &gt;100</div></article>
+      <article class="gauge-card"><span>Temperature</span><div class="speedometer temperature-dial" id="temperature-gauge" role="meter" aria-label="Temperature" aria-valuemin="0" aria-valuemax="120"><div class="gauge-arc"></div><div class="gauge-needle"></div><div class="gauge-hub"></div></div><div class="gauge-scale"><small>0</small><small>40</small><small>80</small><small>120</small></div><div class="gauge-reading"><strong id="temperature">—</strong><small>°C</small></div><div class="zone-key"><i></i>Normal ≤80 <i></i>Warning 80–90 <i></i>Critical &gt;90</div></article>
+      <article class="gauge-card"><span>Motor speed</span><div class="speedometer rpm-dial" id="rpm-gauge" role="meter" aria-label="Motor speed" aria-valuemin="0" aria-valuemax="2000"><div class="gauge-arc"></div><div class="gauge-needle"></div><div class="gauge-hub"></div></div><div class="gauge-scale five"><small>0</small><small>500</small><small>1000</small><small>1500</small><small>2000</small></div><div class="gauge-reading"><strong id="rpm">—</strong><small>RPM</small></div><div class="rpm-range">Calibrated range: 0–2000 RPM</div></article>
+      <article class="production-card"><span>Production</span><div class="production-visual"><div class="production-stack" role="progressbar" aria-label="Current 100-unit batch" aria-valuemin="0" aria-valuemax="100" id="production-stack"><div id="production-stack-fill"></div><div class="stack-lines"></div></div><div class="production-reading"><strong id="production">—</strong><small>total units</small><b id="production-batch">0 / 100 current batch</b><b id="production-batches">0 completed batches</b></div></div></article>
+    </section>
+    <section class="two-column">
+      <article class="panel"><div class="panel-heading"><h2>Alarms</h2><div class="operator"><label for="operator-name">Operator</label><input id="operator-name" value="Operator One" maxlength="100"><span id="alarm-count">0</span></div></div><div id="alarms" class="empty">No alarms</div></article>
+      <article class="panel"><div class="panel-heading"><h2>MES event timeline</h2><span>Latest 20</span></div><div id="events" class="empty">No threshold events</div></article>
+    </section>
+    </section>
+    <section id="production-panel" class="tab-page" hidden>
+      <div class="database-heading"><div><p class="eyebrow">PHASE 6 · PRODUCTION</p><h2>Production Orders &amp; OEE</h2><p>Create work, follow part counts, and measure equipment effectiveness</p></div></div>
+      <section class="production-layout">
+        <article class="panel order-create-panel"><div class="panel-heading"><h2>New production order</h2></div><form id="production-form"><label>Order ID<input id="order-id" required maxlength="50" placeholder="PO-1001"></label><label>Product<input id="product-name" required maxlength="100" placeholder="Drill component"></label><label>Target quantity<input id="target-quantity" type="number" min="1" max="1000000" value="10" required></label><button type="submit">Create order</button><span id="production-error" role="alert"></span></form></article>
+        <article class="panel oee-panel"><div class="panel-heading"><h2>Live OEE</h2><span id="active-order-label">No active order</span></div><div class="oee-grid"><div><span>Availability</span><strong id="oee-availability">0.0%</strong></div><div><span>Performance</span><strong id="oee-performance">0.0%</strong></div><div><span>Quality</span><strong id="oee-quality">0.0%</strong></div><div class="oee-total"><span>OEE</span><strong id="oee-total">0.0%</strong></div></div></article>
+      </section>
+      <article class="panel production-orders-panel"><div class="panel-heading"><h2>Production orders</h2><span id="production-order-count">0</span></div><div id="production-orders" class="empty">No production orders</div></article>
+    </section>
+    <section id="communication-panel" class="tab-page" hidden>
+      <div class="database-heading"><div><p class="eyebrow">PHASE 7 · TRANSPORT</p><h2>Communication</h2><p>Choose how PLC tag changes reach the MES event engine</p></div></div>
+      <section class="communication-grid">
+        <article class="panel transport-panel"><div class="panel-heading"><h2>Active transport</h2><span id="transport-connection">—</span></div><div class="transport-options"><button data-transport="OPC_UA"><strong>OPC UA</strong><small>Subscribed industrial data model</small></button><button data-transport="MQTT"><strong>MQTT</strong><small>Topic-based publish and subscribe</small></button></div><div class="transport-details"><span>OPC endpoint</span><code id="transport-opc-endpoint">—</code><span>MQTT broker</span><code id="transport-mqtt-broker">—</code><span>Topic prefix</span><code id="transport-topic-prefix">—</code></div><p id="transport-error" role="alert"></p></article>
+        <article class="panel flow-panel"><div class="panel-heading"><h2>Live data path</h2></div><div class="flow-path"><strong>Machine</strong><span>→</span><strong>PLC tags</strong><span>→</span><strong id="flow-transport">—</strong><span>→</span><strong>MES processor</strong><span>→</span><strong>Events · SQL</strong></div><p>The transport changes, but the MES rules and downstream behavior stay the same.</p></article>
+      </section>
+      <article class="panel mqtt-messages-panel"><div class="panel-heading"><h2>Recent MQTT messages</h2><span>Latest 30</span></div><div id="mqtt-messages" class="empty">Switch to MQTT to see topic messages</div></article>
+    </section>
+    <section id="data-flow-panel" class="tab-page" hidden>
+      <div class="database-heading flow-heading"><div><p class="eyebrow">PHASE 8 · EDUCATIONAL MONITOR</p><h2>Live Data Flow</h2><p>Follow one PLC value from the machine to business action and storage</p></div><div class="flow-controls"><button id="pause-traces">Pause</button><button id="follow-live" disabled>Following live</button></div></div>
+      <article class="panel lineage-panel" aria-label="MES value lineage graph"><div class="lineage-graph">
+        <div class="lineage-node" data-flow-stage="machine"><span>1</span><strong>Machine</strong><small id="flow-machine-value">Physical value</small></div><i>→</i><div class="lineage-node" data-flow-stage="plc"><span>2</span><strong>PLC tag</strong><small id="flow-tag-value">Named signal</small></div><i>→</i><div class="lineage-node" data-flow-stage="transport"><span>3</span><strong id="trace-transport">Transport</strong><small id="trace-delivery">Message delivery</small><code id="trace-delivery-summary">—</code></div><i>→</i><div class="lineage-node" data-flow-stage="processor"><span>4</span><strong>MES processor</strong><small>Normalized shared input</small><code id="trace-processor-input">—</code></div><i>→</i><div class="lineage-node" data-flow-stage="rule"><span>5</span><strong>Rule</strong><small id="trace-decision">Threshold check</small></div>
+        <div class="lineage-node" data-flow-stage="event"><span>6</span><strong>Event</strong><small id="trace-event">No transition</small></div><i>→</i><div class="lineage-node" data-flow-stage="alarm"><span>7</span><strong>Alarm</strong><small id="trace-alarm">Not created</small></div><i>→</i><div class="lineage-node" data-flow-stage="task"><span>8</span><strong>Task</strong><small id="trace-task">Not created</small></div><i>→</i><div class="lineage-node" data-flow-stage="sql"><span>9</span><strong>SQL Server</strong><small id="trace-tables">—</small><code id="trace-sql-summary">—</code></div><i>→</i><div class="lineage-node" data-flow-stage="dashboard"><span>10</span><strong>Dashboard</strong><small id="trace-latency">— ms</small></div>
+      </div></article>
+      <section class="trace-layout"><article class="panel trace-detail"><div class="panel-heading"><h2>Selected trace</h2><span id="selected-trace-time">—</span></div><dl><dt>Trace ID</dt><dd id="selected-trace-id">—</dd><dt>Tag and value</dt><dd id="selected-trace-tag">—</dd><dt>Delivery</dt><dd id="selected-trace-delivery">—</dd><dt>Message body</dt><dd><pre id="selected-trace-payload">—</pre></dd><dt>MES input</dt><dd><pre id="selected-processor-input">—</pre></dd><dt>Decision</dt><dd id="selected-trace-decision">—</dd><dt>Outcome</dt><dd id="selected-trace-outcome">—</dd><dt>SQL records</dt><dd><pre id="selected-sql-records">—</pre></dd></dl></article><article class="panel trace-timeline-panel"><div class="panel-heading"><h2>Trace timeline</h2><span>Click a row to replay</span></div><div id="trace-timeline" class="empty">Waiting for MES values</div></article></section>
+    </section>
+    <section id="security-panel" class="tab-page" hidden>
+      <div class="database-heading"><div><p class="eyebrow">PHASE 9 · SECURITY</p><h2>Security Configuration</h2><p>Prepare dashboard access, encrypted transports, certificates, and auditing</p></div></div>
+      <section class="security-readiness" aria-label="Security readiness"><article class="status-card"><span>OPC UA channel</span><strong id="opc-channel-status">—</strong><small id="opc-channel-policy">—</small></article><article class="status-card"><span>Dashboard secret</span><strong id="dashboard-secret-status">—</strong></article><article class="status-card"><span>MQTT password</span><strong id="mqtt-password-status">—</strong></article><article class="status-card"><span>Configuration</span><strong id="security-save-status">Saved</strong><button id="restart-dashboard" hidden>Restart dashboard</button></article></section>
+      <article class="panel security-config-panel"><form id="security-form">
+        <fieldset><legend>Dashboard access</legend><label class="check-label"><input id="auth-enabled" type="checkbox"> Require user authentication</label><label>Session timeout (minutes)<input id="session-timeout" type="number" min="5" max="1440" required></label><label class="check-label"><input id="audit-enabled" type="checkbox"> Audit operator actions</label><small>Session signing uses <code>MES_DASHBOARD_SECRET</code>.</small></fieldset>
+        <fieldset><legend>OPC UA security</legend><label>Message security mode<select id="opc-security-mode"><option value="None">None — learning only</option><option value="Sign">Sign</option><option value="SignAndEncrypt">Sign and encrypt</option></select></label><label>Security policy<select id="opc-security-policy"><option value="None">None</option><option value="Basic256Sha256">Basic256Sha256</option><option value="Aes128_Sha256_RsaOaep">Aes128 SHA256 RSA-OAEP</option></select></label><label>MES client certificate<input id="opc-certificate-path" placeholder="certs/opc/client.der"></label><label>MES client private key<input id="opc-private-key-path" placeholder="certs/opc/client.pem"></label><label>OPC server certificate<input id="opc-server-certificate-path" placeholder="certs/opc/server.der"></label><label>OPC server private key<input id="opc-server-private-key-path" placeholder="certs/opc/server.pem"></label><label>Trusted certificates directory<input id="opc-trust-path" placeholder="certs/opc/trusted"></label></fieldset>
+        <fieldset><legend>MQTT security</legend><label class="check-label"><input id="mqtt-tls-enabled" type="checkbox"> Enable TLS</label><label>Username<input id="mqtt-security-username" autocomplete="username" placeholder="mes-client"></label><label>CA certificate path<input id="mqtt-ca-path" placeholder="certs/ca.crt"></label><label>Client certificate path<input id="mqtt-client-cert-path" placeholder="certs/mqtt-client.crt"></label><label>Client key path<input id="mqtt-client-key-path" placeholder="certs/mqtt-client.key"></label><small>Password uses <code>MES_MQTT_PASSWORD</code> and is never returned to this page.</small></fieldset>
+        <div class="security-actions"><button type="submit">Save security configuration</button><span id="security-error" role="alert"></span></div>
+      </form></article>
+    </section>
+    <section id="configuration-panel" class="tab-page" hidden>
+      <div class="database-heading"><div><p class="eyebrow">SYSTEM SETTINGS</p><h2>Configuration</h2><p>Configure thresholds, simulation behavior, and communication</p></div></div>
+    <section class="panel configuration-panel">
+      <div class="panel-heading"><div><h2>Configuration</h2><p>Thresholds and simulation behavior</p></div><span id="config-result">Live settings</span></div>
+      <form id="config-form">
+        <fieldset><legend>Pressure thresholds</legend><label>Warning (bar)<input id="pressure-warning" type="number" min="0" step="0.1" required></label><label>Critical (bar)<input id="pressure-critical" type="number" min="0.1" step="0.1" required></label></fieldset>
+        <fieldset><legend>Temperature thresholds</legend><label>Warning (°C)<input id="temperature-warning" type="number" min="0" step="0.1" required></label><label>Critical (°C)<input id="temperature-critical" type="number" min="0.1" step="0.1" required></label></fieldset>
+        <fieldset><legend>Simulation</legend><label>Update interval (seconds)<input id="update-interval" type="number" min="0.05" max="60" step="0.05" required></label><label>Ticks per produced unit<input id="production-interval" type="number" min="1" max="3600" step="1" required></label></fieldset>
+        <fieldset><legend>Communication</legend><label>OPC UA endpoint<input id="opc-endpoint" type="text" required></label><label>Default mode<select id="communication-mode"><option value="OPC_UA">OPC UA</option><option value="MQTT">MQTT</option></select></label><label>MQTT broker host<input id="mqtt-host" type="text" required></label><label>MQTT broker port<input id="mqtt-port" type="number" min="1" max="65535" required></label><label>MQTT topic prefix<input id="mqtt-prefix" type="text" required></label><small>Broker and endpoint changes require restarting the web application.</small></fieldset>
+        <div class="config-actions"><button type="submit">Save configuration</button><span id="config-error" role="alert"></span></div>
+      </form>
+    </section>
+    </section>
+    <section id="maintenance-panel" class="tab-page" hidden>
+      <div class="database-heading"><div><p class="eyebrow">WORK MANAGEMENT</p><h2>Maintenance Tasks</h2><p>Review, start, and complete work created from machine alarms</p></div></div>
+      <article class="panel maintenance-page-panel"><div class="panel-heading"><h2>Task queue</h2><span id="task-count">0</span></div><div id="tasks" class="empty">No maintenance tasks</div></article>
+    </section>
+    <section id="database-panel" class="tab-page" hidden>
+      <div class="database-heading"><div><p class="eyebrow">SQL SERVER · MesSimulator</p><h2>Database explorer</h2><p>Latest 50 rows per table · read-only</p></div><button id="refresh-database">Refresh database</button></div>
+      <div class="database-shell">
+        <aside class="database-sidebar" aria-label="Database tables">
+          <button class="database-nav selected" data-db-table="readings"><span>MachineReadings</span><strong id="nav-readings-count">0</strong></button>
+          <button class="database-nav" data-db-table="events"><span>Events</span><strong id="nav-events-count">0</strong></button>
+          <button class="database-nav" data-db-table="alarms"><span>Alarms</span><strong id="nav-alarms-count">0</strong></button>
+          <button class="database-nav" data-db-table="tasks"><span>MaintenanceTasks</span><strong id="nav-tasks-count">0</strong></button>
+          <button class="database-nav" data-db-table="audit"><span>AlarmAudit</span><strong id="nav-audit-count">0</strong></button>
+          <button class="database-nav" data-db-table="actions"><span>OperatorActionAudit</span><strong id="nav-actions-count">0</strong></button>
+          <button class="database-nav" data-db-table="orders"><span>ProductionOrders</span><strong id="nav-orders-count">0</strong></button>
+          <button class="database-nav" data-db-table="production"><span>ProductionRecords</span><strong id="nav-production-count">0</strong></button>
+        </aside>
+        <article class="panel database-table">
+          <div class="database-toolbar"><div><h2 id="database-table-title">MachineReadings</h2><span id="database-row-count">0 rows</span></div><label for="database-search">Live search<input id="database-search" type="search" placeholder="Search current table…" autocomplete="off"></label></div>
+          <div id="database-content" class="table-wrap"></div>
+        </article>
+      </div>
+    </section>
+  </main>
+  <div id="login-screen" class="login-screen" hidden><form id="login-form" class="login-card"><p class="eyebrow">SECURE DASHBOARD</p><h2>Sign in to MES</h2><p>Use your assigned administrator or operator account.</p><label>Username<input id="login-username" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><span id="login-error" role="alert"></span></form></div>
+  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=9.4"></script>
+</body></html>

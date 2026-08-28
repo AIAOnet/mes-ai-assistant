@@ -1,0 +1,25 @@
+services:
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: mes-sql-server
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: "${MES_SQL_PASSWORD:-MesLearning_2026!}"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mes-sql-data:/var/opt/mssql
+
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0
+    container_name: mes-mqtt-broker
+    ports:
+      - "8883:8883"
+    volumes:
+      - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mqtt/passwords:/mosquitto/config/passwords
+      - ./certs/mqtt:/mosquitto/certs:ro
+
+volumes:
+  mes-sql-data:

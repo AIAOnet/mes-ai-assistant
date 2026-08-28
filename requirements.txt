@@ -1,0 +1,6 @@
+asyncua==2.0.1
+pymssql==2.3.13
+fastapi==0.141.1
+uvicorn==0.52.4
+websockets==17.1
+paho-mqtt==2.1.0

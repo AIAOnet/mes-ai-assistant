@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="720" viewBox="0 0 1500 720" role="img" aria-labelledby="title desc">
+  <title id="title">Machine pressure data lineage</title>
+  <desc id="desc">Pressure flows from the machine simulator through PLC and OPC UA into MES rules, alarms, and SQL Server tables.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .title{font:700 28px Arial,sans-serif;fill:#0f172a}.group{font:700 15px Arial,sans-serif;fill:#475569;letter-spacing:1px}.node{stroke-width:2;rx:12}.label{font:700 16px Arial,sans-serif;fill:#0f172a;text-anchor:middle}.small{font:14px Arial,sans-serif;fill:#334155;text-anchor:middle}.edge{fill:none;stroke:#475569;stroke-width:2;marker-end:url(#arrow)}.edge-label{font:12px Arial,sans-serif;fill:#475569;text-anchor:middle}.origin{fill:#dbeafe;stroke:#2563eb}.transport{fill:#e0e7ff;stroke:#4f46e5}.mes{fill:#fef3c7;stroke:#d97706}.alarm{fill:#fee2e2;stroke:#dc2626}.store{fill:#dcfce7;stroke:#16a34a}.bg{fill:#f8fafc}.section{fill:none;stroke:#cbd5e1;stroke-width:1.5;stroke-dasharray:7 5;rx:18}
+    </style>
+  </defs>
+  <rect class="bg" width="1500" height="720"/>
+  <text class="title" x="750" y="46" text-anchor="middle">MACHINE-01 Pressure — Data Lineage</text>
+
+  <rect class="section" x="25" y="80" width="300" height="570"/>
+  <rect class="section" x="345" y="80" width="320" height="570"/>
+  <rect class="section" x="685" y="80" width="420" height="570"/>
+  <rect class="section" x="1125" y="80" width="350" height="570"/>
+  <text class="group" x="45" y="110">PHYSICAL SIMULATION</text>
+  <text class="group" x="365" y="110">PLC + OPC UA</text>
+  <text class="group" x="705" y="110">MES PROCESSING</text>
+  <text class="group" x="1145" y="110">SQL SERVER</text>
+
+  <rect class="node origin" x="70" y="145" width="210" height="80"/>
+  <text class="label" x="175" y="178">Machine pressure</text>
+  <text class="small" x="175" y="201">float, default 70.0 bar</text>
+  <rect class="node origin" x="70" y="285" width="210" height="72"/>
+  <text class="label" x="175" y="315">tick()</text>
+  <text class="small" x="175" y="338">gradual physical change</text>
+  <rect class="node origin" x="70" y="415" width="210" height="72"/>
+  <text class="label" x="175" y="445">raise_pressure()</text>
+  <text class="small" x="175" y="468">adds fault influence</text>
+  <rect class="node origin" x="70" y="545" width="210" height="72"/>
+  <text class="label" x="175" y="575">reset()</text>
+  <text class="small" x="175" y="598">writes 70.0</text>
+
+  <rect class="node transport" x="390" y="160" width="230" height="82"/>
+  <text class="label" x="505" y="192">PLC tag</text>
+  <text class="small" x="505" y="218">Machine01.Pressure</text>
+  <rect class="node transport" x="390" y="315" width="230" height="82"/>
+  <text class="label" x="505" y="347">OPC UA node</text>
+  <text class="small" x="505" y="373">Machine01 / Pressure</text>
+  <rect class="node transport" x="390" y="475" width="230" height="82"/>
+  <text class="label" x="505" y="507">Subscription</text>
+  <text class="small" x="505" y="533">DataChangeNotification</text>
+
+  <rect class="node mes" x="730" y="140" width="330" height="76"/>
+  <text class="label" x="895" y="171">MES subscription handler</text>
+  <text class="small" x="895" y="194">routes tag name + value</text>
+  <rect class="node mes" x="730" y="265" width="330" height="76"/>
+  <text class="label" x="895" y="296">EventProcessor</text>
+  <text class="small" x="895" y="319">latest_tags + persist reading</text>
+  <rect class="node mes" x="730" y="390" width="330" height="88"/>
+  <text class="label" x="895" y="421">Threshold rule</text>
+  <text class="small" x="895" y="445">enter &gt; 100 · recover &lt; 90</text>
+  <rect class="node alarm" x="730" y="540" width="330" height="76"/>
+  <text class="label" x="895" y="571">HIGH_PRESSURE alarm</text>
+  <text class="small" x="895" y="594">ACTIVE → RESOLVED</text>
+
+  <rect class="node store" x="1170" y="135" width="260" height="72"/>
+  <text class="label" x="1300" y="165">MachineReadings</text>
+  <text class="small" x="1300" y="188">TagName + NumericValue</text>
+  <rect class="node store" x="1170" y="275" width="260" height="72"/>
+  <text class="label" x="1300" y="305">Events</text>
+  <text class="small" x="1300" y="328">condition + value</text>
+  <rect class="node store" x="1170" y="415" width="260" height="72"/>
+  <text class="label" x="1300" y="445">Alarms</text>
+  <text class="small" x="1300" y="468">triggered value + status</text>
+  <rect class="node store" x="1170" y="555" width="260" height="72"/>
+  <text class="label" x="1300" y="585">AlarmAudit</text>
+  <text class="small" x="1300" y="608">ACTIVE → RESOLVED</text>
+
+  <path class="edge" d="M280 185 H390"/><text class="edge-label" x="335" y="174">PLC scan</text>
+  <path class="edge" d="M175 285 V225"/><text class="edge-label" x="220" y="260">MUTATES</text>
+  <path class="edge" d="M175 415 V225"/><text class="edge-label" x="220" y="394">AFFECTS</text>
+  <path class="edge" d="M175 545 V225"/><text class="edge-label" x="220" y="524">WRITES</text>
+  <path class="edge" d="M505 242 V315"/><text class="edge-label" x="558" y="283">publish</text>
+  <path class="edge" d="M505 397 V475"/><text class="edge-label" x="570" y="441">notification</text>
+  <path class="edge" d="M620 516 H675 V178 H730"/><text class="edge-label" x="676" y="503">CONSUMES</text>
+  <path class="edge" d="M895 216 V265"/>
+  <path class="edge" d="M895 341 V390"/><text class="edge-label" x="947" y="370">evaluate</text>
+  <path class="edge" d="M895 478 V540"/><text class="edge-label" x="967" y="514">state transition</text>
+  <path class="edge" d="M1060 303 H1125 V171 H1170"/><text class="edge-label" x="1115" y="253">reading</text>
+  <path class="edge" d="M1060 434 H1125 V311 H1170"/><text class="edge-label" x="1117" y="378">event</text>
+  <path class="edge" d="M1060 578 H1125 V451 H1170"/><text class="edge-label" x="1118" y="521">alarm</text>
+  <path class="edge" d="M1300 487 V555"/><text class="edge-label" x="1360" y="525">SQL trigger</text>
+
+  <text class="small" x="750" y="688">Confirmed path: machine → PLC → OPC UA subscription → MES rules → alarm → SQL persistence</text>
+</svg>

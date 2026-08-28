@@ -1,0 +1,202 @@
+{
+  "format": "value-lineage-impact-map",
+  "version": "1.0.0",
+  "repository": {
+    "name": "Epiroc MES Factory Simulation",
+    "revision": "unversioned-workspace",
+    "generatedAt": "2026-08-28T09:55:19Z",
+    "analysisModes": ["declared", "static", "runtime", "contract"]
+  },
+  "target": {
+    "entityId": "entity:machine-01",
+    "valueId": "value:machine-01.pressure",
+    "proposedChange": null
+  },
+  "relationshipTypes": {
+    "ORIGINATES_FROM": "The target supplies the value.",
+    "READS": "The source reads the target value.",
+    "WRITES": "The source assigns the target value.",
+    "MUTATES": "The source can change the target value.",
+    "VALIDATES": "The source validates or normalizes the target value.",
+    "BRANCHES_ON": "The source controls behavior based on the target value.",
+    "TRANSFORMS_TO": "The source is copied or converted into the target.",
+    "STORES_IN": "The source is persisted in the target.",
+    "EXPOSES": "The source publishes the target through an interface.",
+    "EMITS": "The source emits the target notification or event.",
+    "CONSUMES": "The source receives the target.",
+    "CALLS": "The source invokes the target with the value.",
+    "CONSTRAINS": "The source defines a limit or invariant for the target.",
+    "AFFECTS": "The source influences the target without directly assigning it."
+  },
+  "entities": [
+    {
+      "id": "entity:machine-01",
+      "kind": "domain_entity",
+      "name": "MACHINE-01",
+      "location": {"repositoryPath": "machine/simulator.py", "symbol": "MachineSimulator", "line": 16}
+    },
+    {
+      "id": "entity:high-pressure-alarm",
+      "kind": "domain_entity",
+      "name": "HIGH_PRESSURE Alarm",
+      "location": {"repositoryPath": "mes/alarms.py", "symbol": "Alarm", "line": 19}
+    }
+  ],
+  "values": [
+    {
+      "id": "value:machine-01.pressure",
+      "entityId": "entity:machine-01",
+      "name": "pressure",
+      "dataType": "float",
+      "unit": "bar (documented simulation meaning; not encoded in the type)",
+      "allowedValues": "runtime clamps to >= 0.0; no explicit upper bound",
+      "defaultValue": 70.0,
+      "nullable": false,
+      "aliases": ["MachineSimulator.pressure", "Machine01.Pressure", "Machine01/Pressure", "NumericValue", "Event.value", "TriggeredValue"]
+    },
+    {
+      "id": "value:high-pressure.condition",
+      "entityId": "entity:high-pressure-alarm",
+      "name": "HIGH_PRESSURE condition",
+      "dataType": "boolean internal state",
+      "allowedValues": [false, true],
+      "defaultValue": false,
+      "nullable": false,
+      "aliases": ["HIGH_PRESSURE", "ThresholdRuleEngine._active", "CONDITION_ENTERED", "CONDITION_RECOVERED"]
+    }
+  ],
+  "nodes": [
+    {"id": "method:machine-tick", "kind": "method", "name": "MachineSimulator.tick", "location": {"repositoryPath": "machine/simulator.py", "symbol": "MachineSimulator.tick", "line": 34}},
+    {"id": "method:raise-pressure", "kind": "method", "name": "MachineSimulator.raise_pressure", "location": {"repositoryPath": "machine/simulator.py", "symbol": "MachineSimulator.raise_pressure", "line": 62}},
+    {"id": "method:machine-reset", "kind": "method", "name": "MachineSimulator.reset", "location": {"repositoryPath": "machine/simulator.py", "symbol": "MachineSimulator.reset", "line": 74}},
+    {"id": "value:plc-pressure-tag", "kind": "plc_tag", "name": "Machine01.Pressure", "location": {"repositoryPath": "machine/plc.py", "symbol": "PLCSimulator.scan", "line": 21}},
+    {"id": "method:opc-publish-scan", "kind": "method", "name": "OPCUAServer.publish_scan", "location": {"repositoryPath": "opc/server.py", "symbol": "OPCUAServer.publish_scan", "line": 50}},
+    {"id": "contract:opc-pressure-node", "kind": "external_contract", "name": "OPC UA Machine01/Pressure", "location": {"repositoryPath": "opc/server.py", "symbol": "OPCUAServer.start", "line": 41}},
+    {"id": "handler:opc-datachange", "kind": "event_handler", "name": "MESSubscriptionHandler.datachange_notification", "location": {"repositoryPath": "mes/opc_client.py", "symbol": "MESSubscriptionHandler.datachange_notification", "line": 33}},
+    {"id": "method:event-process", "kind": "method", "name": "EventProcessor.process", "location": {"repositoryPath": "mes/processor.py", "symbol": "EventProcessor.process", "line": 36}},
+    {"id": "cache:latest-tags", "kind": "in_memory_state", "name": "EventProcessor.latest_tags", "location": {"repositoryPath": "mes/processor.py", "symbol": "EventProcessor.latest_tags", "line": 32}},
+    {"id": "config:pressure-thresholds", "kind": "configuration", "name": "pressure warning/critical", "location": {"repositoryPath": "config/settings.json", "line": 2}},
+    {"id": "check:pressure-threshold", "kind": "business_rule", "name": "HIGH_PRESSURE threshold and hysteresis", "location": {"repositoryPath": "mes/rules.py", "symbol": "ThresholdRuleEngine.evaluate", "line": 26}},
+    {"id": "event:pressure-condition", "kind": "domain_event", "name": "Pressure CONDITION_ENTERED/RECOVERED", "location": {"repositoryPath": "mes/rules.py", "symbol": "ThresholdRuleEngine.evaluate", "line": 34}},
+    {"id": "method:alarm-handle", "kind": "method", "name": "AlarmManager.handle", "location": {"repositoryPath": "mes/alarms.py", "symbol": "AlarmManager.handle", "line": 39}},
+    {"id": "value:alarm-state", "kind": "derived_value", "name": "HIGH_PRESSURE alarm state", "location": {"repositoryPath": "mes/alarms.py", "symbol": "Alarm.status", "line": 27}},
+    {"id": "method:persist-reading", "kind": "repository_method", "name": "SQLServerRepository.persist_reading", "location": {"repositoryPath": "database/repository.py", "symbol": "SQLServerRepository.persist_reading", "line": 63}},
+    {"id": "method:persist-event", "kind": "repository_method", "name": "SQLServerRepository.persist", "location": {"repositoryPath": "database/repository.py", "symbol": "SQLServerRepository.persist", "line": 80}},
+    {"id": "store:machine-readings", "kind": "database_columns", "name": "MachineReadings.TagName/NumericValue", "location": {"repositoryPath": "database/schema.sql", "line": 13}},
+    {"id": "store:events", "kind": "database_columns", "name": "Events.ConditionName/NumericValue", "location": {"repositoryPath": "database/schema.sql", "line": 28}},
+    {"id": "store:alarms", "kind": "database_columns", "name": "Alarms.TriggeredValue/Status", "location": {"repositoryPath": "database/schema.sql", "line": 43}},
+    {"id": "store:alarm-audit", "kind": "database_columns", "name": "AlarmAudit.PreviousStatus/NewStatus", "location": {"repositoryPath": "database/schema.sql", "line": 118}},
+    {"id": "test:opc-lineage", "kind": "test", "name": "test_opc_notification_drives_state_aware_mes_alarm", "location": {"repositoryPath": "tests/test_opc.py", "line": 71}},
+    {"id": "test:mes-rules", "kind": "test", "name": "MES pressure rule tests", "location": {"repositoryPath": "tests/test_mes.py", "line": 23}}
+  ],
+  "edges": [
+    {"from": "method:machine-tick", "type": "MUTATES", "to": "value:machine-01.pressure", "evidence": "static", "evidenceRefs": ["machine/simulator.py:34", "machine/simulator.py:46", "machine/simulator.py:59"], "confidence": 1.0},
+    {"from": "method:raise-pressure", "type": "AFFECTS", "to": "value:machine-01.pressure", "evidence": "static", "evidenceRefs": ["machine/simulator.py:41", "machine/simulator.py:62"], "confidence": 0.99},
+    {"from": "method:machine-reset", "type": "WRITES", "to": "value:machine-01.pressure", "evidence": "static", "evidenceRefs": ["machine/simulator.py:74", "machine/simulator.py:76"], "confidence": 1.0},
+    {"from": "value:machine-01.pressure", "type": "TRANSFORMS_TO", "to": "value:plc-pressure-tag", "evidence": "static", "evidenceRefs": ["machine/plc.py:18", "machine/plc.py:21"], "confidence": 1.0},
+    {"from": "value:plc-pressure-tag", "type": "EXPOSES", "to": "contract:opc-pressure-node", "evidence": "contract", "evidenceRefs": ["opc/server.py:41", "opc/server.py:43"], "confidence": 0.99},
+    {"from": "method:opc-publish-scan", "type": "WRITES", "to": "contract:opc-pressure-node", "evidence": "static", "evidenceRefs": ["opc/server.py:50", "opc/server.py:56"], "confidence": 1.0},
+    {"from": "contract:opc-pressure-node", "type": "EMITS", "to": "handler:opc-datachange", "evidence": "runtime", "evidenceRefs": ["tests/test_opc.py:38", "tests/test_opc.py:64", "tests/test_opc.py:71"], "confidence": 1.0},
+    {"from": "handler:opc-datachange", "type": "CALLS", "to": "method:event-process", "evidence": "static", "evidenceRefs": ["mes/opc_client.py:33", "mes/opc_client.py:35"], "confidence": 1.0},
+    {"from": "method:event-process", "type": "WRITES", "to": "cache:latest-tags", "evidence": "static", "evidenceRefs": ["mes/processor.py:36", "mes/processor.py:37"], "confidence": 1.0},
+    {"from": "method:event-process", "type": "CALLS", "to": "method:persist-reading", "evidence": "static", "evidenceRefs": ["mes/processor.py:39", "mes/processor.py:40"], "confidence": 1.0},
+    {"from": "method:persist-reading", "type": "STORES_IN", "to": "store:machine-readings", "evidence": "runtime", "evidenceRefs": ["database/repository.py:63", "database/repository.py:72", "runtime verification: MachineReadings=2"], "confidence": 1.0},
+    {"from": "config:pressure-thresholds", "type": "CONSTRAINS", "to": "check:pressure-threshold", "evidence": "declared", "evidenceRefs": ["config/settings.json:2", "config/settings.json:3", "config/settings.json:4", "mes/main.py:24"], "confidence": 1.0},
+    {"from": "method:event-process", "type": "CALLS", "to": "check:pressure-threshold", "evidence": "static", "evidenceRefs": ["mes/processor.py:42"], "confidence": 1.0},
+    {"from": "check:pressure-threshold", "type": "BRANCHES_ON", "to": "value:machine-01.pressure", "evidence": "static", "evidenceRefs": ["mes/rules.py:31", "mes/rules.py:34", "mes/rules.py:45"], "confidence": 1.0},
+    {"from": "check:pressure-threshold", "type": "EMITS", "to": "event:pressure-condition", "evidence": "static", "evidenceRefs": ["mes/rules.py:34", "mes/rules.py:37", "mes/rules.py:45", "mes/rules.py:48"], "confidence": 1.0},
+    {"from": "event:pressure-condition", "type": "CONSUMES", "to": "method:alarm-handle", "evidence": "static", "evidenceRefs": ["mes/processor.py:45", "mes/alarms.py:39"], "confidence": 1.0},
+    {"from": "method:alarm-handle", "type": "TRANSFORMS_TO", "to": "value:alarm-state", "evidence": "static", "evidenceRefs": ["mes/alarms.py:40", "mes/alarms.py:54", "mes/alarms.py:60"], "confidence": 1.0},
+    {"from": "event:pressure-condition", "type": "CALLS", "to": "method:persist-event", "evidence": "static", "evidenceRefs": ["mes/processor.py:48", "mes/processor.py:49"], "confidence": 1.0},
+    {"from": "method:persist-event", "type": "STORES_IN", "to": "store:events", "evidence": "runtime", "evidenceRefs": ["database/repository.py:80", "database/repository.py:85", "runtime verification: Events=2"], "confidence": 1.0},
+    {"from": "value:alarm-state", "type": "STORES_IN", "to": "store:alarms", "evidence": "runtime", "evidenceRefs": ["database/repository.py:98", "database/repository.py:117", "runtime verification: Alarm HIGH_PRESSURE RESOLVED"], "confidence": 1.0},
+    {"from": "store:alarms", "type": "EMITS", "to": "store:alarm-audit", "evidence": "runtime", "evidenceRefs": ["database/triggers.sql:1", "runtime verification: AlarmAudit ACTIVE to RESOLVED"], "confidence": 1.0},
+    {"from": "test:opc-lineage", "type": "VALIDATES", "to": "contract:opc-pressure-node", "evidence": "runtime", "evidenceRefs": ["tests/test_opc.py:71", "tests/test_opc.py:90", "tests/test_opc.py:105"], "confidence": 1.0},
+    {"from": "test:mes-rules", "type": "VALIDATES", "to": "check:pressure-threshold", "evidence": "runtime", "evidenceRefs": ["tests/test_mes.py:23", "tests/test_mes.py:28", "tests/test_mes.py:39"], "confidence": 1.0}
+  ],
+  "mutationRules": [
+    {
+      "valueId": "value:machine-01.pressure",
+      "allowedWriters": ["method:machine-tick", "method:machine-reset"],
+      "indirectWriters": ["method:raise-pressure"],
+      "knownBypasses": ["Tests directly assign machine.pressure to produce deterministic threshold transitions."],
+      "requiredChecks": ["Runtime clamps generated values to >= 0.0; MES checks critical >100 and recovery <90."]
+    }
+  ],
+  "history": {
+    "commits": [],
+    "coverage": {
+      "examinedRefs": [],
+      "isShallow": null,
+      "followedPaths": ["machine/simulator.py", "machine/plc.py", "opc/server.py", "mes/rules.py", "database/repository.py"],
+      "searchAliases": ["Pressure", "Machine01.Pressure", "HIGH_PRESSURE"],
+      "earliestExaminedCommit": null,
+      "limitations": ["C:/Projects/Epiroc is not a Git repository, so no revision, commits, renames, branches, or deleted-file history can be inspected."],
+      "excludedCandidateCount": 0
+    }
+  },
+  "changeScenarios": [
+    {
+      "id": "change:pressure-threshold-or-type",
+      "changeType": "constraint-change",
+      "subject": "value:machine-01.pressure",
+      "directlyAffected": ["method:machine-tick", "value:plc-pressure-tag", "contract:opc-pressure-node", "config:pressure-thresholds", "check:pressure-threshold", "store:machine-readings"],
+      "transitivelyAffected": ["event:pressure-condition", "value:alarm-state", "store:events", "store:alarms", "store:alarm-audit"],
+      "compatibilityRisks": ["Changing units without conversion would make thresholds and stored history semantically wrong.", "Changing the OPC UA node data type may break subscribed clients.", "Changing hysteresis can alter alarm frequency and recovery timing."],
+      "dataMigration": "Required only for unit reinterpretation or storage-type change; a threshold-only change needs no historical backfill unless reports must be recalculated.",
+      "requiredVerification": ["gradual-change tests", "OPC UA subscription integration test", "threshold crossing/no-duplicate/recovery tests", "SQL persistence and trigger verification"],
+      "rollout": "Version OPC UA contracts for type/unit changes and deploy MES threshold configuration with the matching producer conversion.",
+      "rollback": "Restore prior unit conversion and thresholds; retain raw historical readings with explicit unit metadata before any unit migration."
+    }
+  ],
+  "questionsAnswered": [
+    {"questionNumber": 1, "question": "What is the exact entity and value being mapped?", "status": "answered", "answer": "MACHINE-01 pressure, represented canonically by MachineSimulator.pressure and operationally by the Machine01.Pressure PLC tag.", "evidenceRefs": ["machine/simulator.py:19", "machine/simulator.py:20", "machine/plc.py:21"], "gaps": []},
+    {"questionNumber": 2, "question": "What does the value mean in the business or application domain?", "status": "answered", "answer": "The simulated machine hydraulic/process pressure, documented in bar and used to detect unsafe high-pressure conditions.", "evidenceRefs": ["README.md", "config/settings.json:2", "mes/main.py"], "gaps": ["The unit is documentation only and is not carried as typed metadata."]},
+    {"questionNumber": 3, "question": "What are its type, allowed values, nullability, default, constraints, and invariants?", "status": "answered", "answer": "Python float, non-null by construction, default 70.0, runtime-generated values clamped to >=0.0, no explicit upper bound; persisted numeric value is nullable because the table supports nonnumeric tags too.", "evidenceRefs": ["machine/simulator.py:20", "machine/simulator.py:46", "machine/simulator.py:59", "database/schema.sql:17"], "gaps": ["No explicit unit or range constraint exists in SQL or OPC UA metadata."]},
+    {"questionNumber": 4, "question": "What aliases represent the same value in code, APIs, storage, events, UI, configuration, and documentation?", "status": "answered", "answer": "MachineSimulator.pressure, Machine01.Pressure, OPC UA Machine01/Pressure, Event.value/NumericValue, Alarm.triggered_value/TriggeredValue, and configuration key pressure.", "evidenceRefs": ["machine/plc.py:21", "opc/server.py:41", "mes/events.py", "database/schema.sql:17", "database/schema.sql:33", "database/schema.sql:49"], "gaps": ["No dashboard/UI alias exists yet."]},
+    {"questionNumber": 5, "question": "Where does the value originate?", "status": "answered", "answer": "It originates in the MachineSimulator instance at 70.0 and evolves in tick().", "evidenceRefs": ["machine/simulator.py:20", "machine/simulator.py:34"], "gaps": []},
+    {"questionNumber": 6, "question": "Which constructors, defaults, APIs, imports, events, configuration sources, database reads, or external systems can supply it?", "status": "answered", "answer": "The dataclass constructor/default supplies it; tick/reset mutate it; tests can pass an explicit constructor value or directly assign it. No production API, database load, or external sensor currently supplies it.", "evidenceRefs": ["machine/simulator.py:15", "machine/simulator.py:20", "tests/test_opc.py:90"], "gaps": ["A real sensor/PLC input adapter is not implemented."]},
+    {"questionNumber": 7, "question": "Which methods, functions, jobs, handlers, queries, or users can create, assign, or mutate it?", "status": "answered", "answer": "MachineSimulator construction, tick(), reset(), and direct test assignment; raise_pressure() indirectly increases future tick deltas.", "evidenceRefs": ["machine/simulator.py:20", "machine/simulator.py:34", "machine/simulator.py:62", "machine/simulator.py:74", "tests/test_opc.py:90"], "gaps": []},
+    {"questionNumber": 8, "question": "Can any code bypass the intended mutation path?", "status": "answered", "answer": "Yes. pressure is a public dataclass field, and tests assign it directly. Any caller holding the machine object can do the same.", "evidenceRefs": ["machine/simulator.py:20", "tests/test_opc.py:90", "tests/test_opc.py:94", "tests/test_opc.py:99"], "gaps": []},
+    {"questionNumber": 9, "question": "Where is the value validated, normalized, sanitized, authorized, or rejected?", "status": "answered", "answer": "tick() clamps it to zero and rounds to one decimal. The rule engine rejects nonnumeric values for threshold evaluation. There is no authorization because no write API exists.", "evidenceRefs": ["machine/simulator.py:46", "machine/simulator.py:59", "mes/rules.py:27", "mes/rules.py:28"], "gaps": ["Direct field assignment bypasses clamping and type validation."]},
+    {"questionNumber": 10, "question": "Where is the value compared, switched on, matched, filtered, or used to control a branch?", "status": "answered", "answer": "OPCUAServer publishes only changed values; ThresholdRuleEngine compares it against >critical and <recovery boundaries while tracking active state.", "evidenceRefs": ["opc/server.py:54", "opc/server.py:55", "mes/rules.py:31", "mes/rules.py:34", "mes/rules.py:45"], "gaps": []},
+    {"questionNumber": 11, "question": "Where is the value stored, indexed, cached, copied, logged, measured, backed up, or searched?", "status": "answered", "answer": "Copied into PLC tags and OPC UA nodes, cached in latest_tags, logged by OPC/MES, and persisted in MachineReadings, Events, and Alarms. Machine/time indexes support reading and event history.", "evidenceRefs": ["machine/plc.py:21", "opc/server.py:56", "mes/processor.py:32", "database/schema.sql:22", "database/schema.sql:37", "database/schema.sql:59"], "gaps": ["No backup policy or retention policy is implemented."]},
+    {"questionNumber": 12, "question": "Which database columns, schemas, constraints, migrations, and serialization formats represent it?", "status": "answered", "answer": "dbo.MachineReadings.NumericValue, dbo.Events.NumericValue, and dbo.Alarms.TriggeredValue are float columns; tag/condition aliases are nvarchar. Idempotent schema scripts act as initialization rather than versioned migrations.", "evidenceRefs": ["database/schema.sql:13", "database/schema.sql:17", "database/schema.sql:28", "database/schema.sql:33", "database/schema.sql:43", "database/schema.sql:49"], "gaps": ["No migration version table and no unit column."]},
+    {"questionNumber": 13, "question": "Which APIs, commands, forms, files, or messages accept it?", "status": "answered", "answer": "The OPC UA data-change notification and EventProcessor.process accept it. No HTTP API, form, MQTT message, or dashboard control accepts a pressure value yet.", "evidenceRefs": ["mes/opc_client.py:33", "mes/processor.py:36"], "gaps": ["Fault-control API is planned but not implemented."]},
+    {"questionNumber": 14, "question": "Which APIs, views, reports, exports, events, logs, or metrics expose it?", "status": "answered", "answer": "The OPC UA node exposes it; OPC and MES logs print it; domain events and SQL rows expose snapshots. No view/report/dashboard is implemented.", "evidenceRefs": ["opc/server.py:43", "opc/server.py:57", "mes/processor.py:38", "database/repository.py:72"], "gaps": ["No browser/API exposure exists yet."]},
+    {"questionNumber": 15, "question": "Which derived values are calculated from it?", "status": "answered", "answer": "HIGH_PRESSURE active state, condition entered/recovered events, alarm status, alarm message, and triggered value.", "evidenceRefs": ["mes/rules.py:34", "mes/rules.py:45", "mes/alarms.py:40", "mes/alarms.py:47"], "gaps": []},
+    {"questionNumber": 16, "question": "Which methods, UI components, permissions, workflows, side effects, and external consumers depend on it directly?", "status": "answered", "answer": "PLCSimulator.scan, OPCUAServer.publish_scan, MES OPC subscription, EventProcessor, threshold rules, repository writes, and alarm management depend directly. No UI or permissions exist.", "evidenceRefs": ["machine/plc.py:18", "opc/server.py:50", "mes/opc_client.py:33", "mes/processor.py:36", "mes/rules.py:26"], "gaps": ["External OPC UA clients beyond the test client are unknown."]},
+    {"questionNumber": 17, "question": "What depends on those direct consumers transitively?", "status": "answered", "answer": "Domain events lead to alarm creation/resolution, Events and Alarms storage, and SQL-triggered AlarmAudit rows.", "evidenceRefs": ["mes/processor.py:42", "mes/alarms.py:39", "database/repository.py:80", "database/triggers.sql:1"], "gaps": ["Future maintenance tasks and dashboard are not current consumers."]},
+    {"questionNumber": 18, "question": "Which caches, calculations, contracts, assumptions, or indexes must be invalidated or rebuilt when it changes?", "status": "answered", "answer": "Ordinary value changes update latest_tags and append history; no rebuild is needed. A semantic/type/unit change requires synchronized OPC UA node, threshold configuration, SQL interpretation, tests, and potentially historical migration. Existing indexes do not require rebuild for a threshold-only change.", "evidenceRefs": ["mes/processor.py:37", "config/settings.json:2", "database/schema.sql:22"], "gaps": ["No unit/version contract currently guards semantic changes."]},
+    {"questionNumber": 19, "question": "Which tests specify or depend on its current behavior?", "status": "answered", "answer": "Machine gradual/fault/reset tests, MES normal/crossing/no-duplicate/recovery tests, OPC subscription test, and end-to-end OPC-to-alarm test.", "evidenceRefs": ["tests/test_machine.py", "tests/test_mes.py:23", "tests/test_mes.py:28", "tests/test_mes.py:39", "tests/test_opc.py:38", "tests/test_opc.py:71"], "gaps": []},
+    {"questionNumber": 20, "question": "Which commits introduced or changed the entity, value, aliases, constraints, mutations, checks, storage, APIs, events, and downstream behavior?", "status": "gap", "answer": null, "evidenceRefs": [], "gaps": ["The workspace is not a Git repository, so commits cannot be inspected."]},
+    {"questionNumber": 21, "question": "Why is each included commit relevant, and what evidence supports that conclusion?", "status": "not_applicable", "answer": "No commits are included because no Git history exists in this workspace.", "evidenceRefs": [], "gaps": ["Commit intent is unavailable."]},
+    {"questionNumber": 22, "question": "Is repository history complete, shallow, squashed, renamed, split across repositories, or otherwise limited?", "status": "answered", "answer": "History is entirely unavailable: C:/Projects/Epiroc has no .git repository.", "evidenceRefs": ["git rev-parse failure", "collect-entity-commits.ps1: Not a Git repository"], "gaps": ["All historical coverage is missing."]},
+    {"questionNumber": 23, "question": "If the proposed change adds, removes, renames, retypes, or reinterprets the value, what is directly affected?", "status": "answered", "answer": "No change was proposed. For a likely type/unit/threshold change, direct effects are machine generation, PLC tag type/name, OPC UA node contract, configuration, rule comparisons, and MachineReadings storage.", "evidenceRefs": ["machine/simulator.py:20", "machine/plc.py:21", "opc/server.py:43", "config/settings.json:2", "mes/rules.py:34", "database/schema.sql:17"], "gaps": []},
+    {"questionNumber": 24, "question": "What is transitively affected by the proposed change?", "status": "answered", "answer": "Condition events, alarm creation/recovery, persisted Events/Alarms, audit history, tests, and any external OPC UA consumers would be transitively affected.", "evidenceRefs": ["mes/rules.py:37", "mes/alarms.py:39", "database/repository.py:80", "database/triggers.sql:1", "tests/test_opc.py:71"], "gaps": ["External OPC UA consumers cannot be enumerated from this repository."]},
+    {"questionNumber": 25, "question": "Could existing stored data, API clients, event consumers, exhaustive branches, reports, or UI code reject or misunderstand the new behavior?", "status": "answered", "answer": "Yes for a unit/type/name change: stored floats lack unit metadata and OPC UA clients may expect the current browse name and type. Threshold-only changes alter alarm behavior but do not invalidate storage shape.", "evidenceRefs": ["database/schema.sql:17", "opc/server.py:41", "mes/opc_client.py:53"], "gaps": ["No inventory of external OPC UA clients exists."]},
+    {"questionNumber": 26, "question": "Are a migration, backfill, compatibility period, contract version, feature flag, rollout plan, or rollback plan required?", "status": "answered", "answer": "Not for current mapping. Threshold changes need coordinated configuration and rollback; unit/type/rename changes need versioning, conversion/backfill, a compatibility window, and rollback. A feature flag is optional, not currently implemented.", "evidenceRefs": ["config/settings.json:2", "database/schema.sql:17", "opc/server.py:43"], "gaps": ["No migration framework or contract version exists."]},
+    {"questionNumber": 27, "question": "Which conclusions are confirmed by static analysis, runtime observation, contracts, declarations, or Git history?", "status": "answered", "answer": "Declarations confirm defaults/types/config/schema; static analysis confirms copying, callbacks, rules, alarms, and repository calls; runtime tests confirm OPC notifications and state-aware alarms; live SQL verification confirmed readings/events/alarm/audit. No Git conclusions are available.", "evidenceRefs": ["machine/simulator.py:20", "tests/test_opc.py:71", "runtime verification: MachineReadings=2 Events=2 Alarm=RESOLVED AlarmAudit=ACTIVE->RESOLVED"], "gaps": ["No production runtime trace or historical evidence."]},
+    {"questionNumber": 28, "question": "Which relationships remain inferred, dynamic, external, or unknown?", "status": "answered", "answer": "Unknowns include external OPC UA clients, real sensor/PLC acquisition, production security, retention/backup, future MQTT parity, dashboard consumption, and behavior under restart/reconnection while an alarm condition is active.", "evidenceRefs": ["README.md", "mes/opc_client.py:44"], "gaps": ["These boundaries are absent or external to the current code."]}
+  ],
+  "coverage": {
+    "evidenceModes": ["declared", "static", "runtime", "contract"],
+    "mappedAliases": ["MachineSimulator.pressure", "Machine01.Pressure", "Machine01/Pressure", "NumericValue", "TriggeredValue", "HIGH_PRESSURE"],
+    "unmappedValues": ["UI/dashboard pressure display", "MQTT pressure payload"],
+    "unresolvedDynamicCalls": ["External OPC UA clients and their assumptions"]
+  },
+  "gaps": [
+    "No Git repository/history.",
+    "Pressure unit is documented but not encoded in messages or storage.",
+    "Public pressure field permits bypass of normal clamping.",
+    "No dashboard, MQTT adapter, external sensor adapter, retention, or backup path is implemented.",
+    "Rule active state is in memory and is not restored from SQL after MES restart."
+  ],
+  "recommendedVerification": [
+    "Initialize Git and commit each completed phase so future lineage includes history.",
+    "Add unit metadata to the OPC UA node and persisted readings before supporting unit conversion.",
+    "Test MES restart while pressure is already critical to define alarm reconstruction behavior.",
+    "Add an integration test that queries SQL rows after the OPC-to-MES path.",
+    "Re-run this lineage map after dashboard and MQTT phases are implemented."
+  ]
+}

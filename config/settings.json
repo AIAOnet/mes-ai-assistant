@@ -1,0 +1,40 @@
+{
+  "pressure": {
+    "warning": 90.0,
+    "critical": 100.0
+  },
+  "temperature": {
+    "warning": 80.0,
+    "critical": 90.0
+  },
+  "simulation_update_interval": 1.0,
+  "production_interval_ticks": 5,
+  "opc_endpoint": "opc.tcp://127.0.0.1:4840/mes-simulator/",
+  "communication_mode": "MQTT",
+  "mqtt_broker_host": "127.0.0.1",
+  "mqtt_broker_port": 8883,
+  "mqtt_topic_prefix": "factory/machine-01",
+  "security": {
+    "dashboard": {
+      "authentication_enabled": true,
+      "session_timeout_minutes": 30,
+      "audit_enabled": true
+    },
+    "opc_ua": {
+      "security_mode": "SignAndEncrypt",
+      "security_policy": "Basic256Sha256",
+      "certificate_path": "certs/opc/client.der",
+      "private_key_path": "certs/opc/client.pem",
+      "server_certificate_path": "certs/opc/server.der",
+      "server_private_key_path": "certs/opc/server.pem",
+      "trusted_certificates_path": "certs/opc/trusted"
+    },
+    "mqtt": {
+      "tls_enabled": true,
+      "username": "mes-client",
+      "ca_certificate_path": "certs/mqtt/mqtt-ca.crt",
+      "client_certificate_path": "certs/mqtt/mqtt-client.crt",
+      "client_key_path": "certs/mqtt/mqtt-client.key"
+    }
+  }
+}
