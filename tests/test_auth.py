@@ -2,10 +2,16 @@ import os
 import unittest
 from unittest.mock import patch
 
-from dashboard.auth import User, authenticate, create_session, read_session
+from dashboard.auth import User, authenticate, create_session, read_session, secure_cookie_enabled
 
 
 class DashboardAuthenticationTests(unittest.TestCase):
+    def test_secure_cookie_flag_is_environment_controlled(self) -> None:
+        with patch.dict(os.environ, {"MES_COOKIE_SECURE": "true"}):
+            self.assertTrue(secure_cookie_enabled())
+        with patch.dict(os.environ, {"MES_COOKIE_SECURE": "false"}):
+            self.assertFalse(secure_cookie_enabled())
+
     def test_signed_session_round_trip(self) -> None:
         with patch.dict(os.environ, {"MES_DASHBOARD_SECRET": "s" * 32}):
             user = read_session(create_session(User("alice", "operator"), 30))
