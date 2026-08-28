@@ -336,3 +336,17 @@ The admin-only **Diagnostics** tab shows live SQL, OPC UA, MQTT, and dashboard
 health; safe runtime/container metadata; uptime; and the latest 50 in-memory
 application errors. Docker rotates each service's JSON logs at five 10 MB
 files. Use `docker compose logs dashboard` for the structured stream.
+
+## Phase 10, step 3: Monitoring and alerting
+
+Prometheus-compatible metrics are available at `http://127.0.0.1:8000/metrics`.
+They report dependency availability, HTTP request counts by method/path/status,
+request-duration totals, and the number of active alerts. The endpoint has no
+dashboard-session requirement so a collector can scrape it; expose it only on
+a trusted operations network in production.
+
+The admin **Diagnostics** tab also shows request totals, error rate, average and
+95th-percentile response time, a recent latency trend, and active alerts. A
+critical alert is raised when SQL Server or the selected transport is
+unavailable. A warning is raised after three server failures occur within the
+latest 20 requests.
