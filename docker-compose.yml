@@ -10,6 +10,12 @@ services:
       - "1433:1433"
     volumes:
       - mes-sql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   mqtt-broker:
     image: eclipse-mosquitto:2.0
@@ -20,6 +26,55 @@ services:
       - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - ./mqtt/passwords:/mosquitto/config/passwords
       - ./certs/mqtt:/mosquitto/certs:ro
+    environment:
+      MES_MQTT_PASSWORD: "${MES_MQTT_PASSWORD}"
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -p 8883 --cafile /mosquitto/certs/mqtt-ca.crt --cert /mosquitto/certs/mqtt-client.crt --key /mosquitto/certs/mqtt-client.key -u mes-client -P \"$$MES_MQTT_PASSWORD\" -t factory/health -m healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  database-init:
+    build: .
+    container_name: mes-database-init
+    command: ["python", "-m", "database.bootstrap"]
+    env_file: .env
+    environment:
+      MES_SQL_CONNECTION: "SERVER=sql-server,1433;DATABASE=MesSimulator;UID=sa;PWD=${MES_SQL_PASSWORD}"
+    depends_on:
+      sql-server:
+        condition: service_healthy
+    restart: "no"
+
+  dashboard:
+    build: .
+    container_name: mes-dashboard
+    env_file: .env
+    environment:
+      MES_CONTAINERIZED: "1"
+      MES_DASHBOARD_HOST: "0.0.0.0"
+      MES_SQL_CONNECTION: "SERVER=sql-server,1433;DATABASE=MesSimulator;UID=sa;PWD=${MES_SQL_PASSWORD}"
+      MES_MQTT_HOST: "mqtt-broker"
+      MES_MQTT_PORT: "8883"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./certs/opc:/app/certs/opc:ro
+      - ./certs/mqtt:/app/certs/mqtt:ro
+      - ./config:/app/config
+    depends_on:
+      database-init:
+        condition: service_completed_successfully
+      mqtt-broker:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
 
 volumes:
   mes-sql-data:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from contextlib import suppress
 from datetime import datetime, timezone
 
@@ -34,7 +35,9 @@ class SimulationController:
         self.opc_server = OPCUAServer(self.plc, endpoint, self.settings["security"]["opc_ua"])
         self.processor = build_processor(persist=persist)
         self.mes_client = MESOPCClient(endpoint, self.processor, self.settings["security"]["opc_ua"])
-        self.mqtt_transport = MESMQTTTransport(self.plc, self.processor, self.settings.get("mqtt_broker_host", "127.0.0.1"), self.settings.get("mqtt_broker_port", 1883), self.settings.get("mqtt_topic_prefix", "factory/machine-01"), self.settings["security"]["mqtt"])
+        mqtt_host = os.getenv("MES_MQTT_HOST", self.settings.get("mqtt_broker_host", "127.0.0.1"))
+        mqtt_port = int(os.getenv("MES_MQTT_PORT", str(self.settings.get("mqtt_broker_port", 1883))))
+        self.mqtt_transport = MESMQTTTransport(self.plc, self.processor, mqtt_host, mqtt_port, self.settings.get("mqtt_topic_prefix", "factory/machine-01"), self.settings["security"]["mqtt"])
         self.communication_mode = "OPC_UA" if endpoint_overridden else self.settings["communication_mode"]
         self.update_interval = update_interval or self.settings["simulation_update_interval"]
         self.simulation_running = False
@@ -236,6 +239,10 @@ class SimulationController:
         if self.processor.persistence is None:
             return {"readings": [], "events": [], "alarms": [], "tasks": [], "audit": [], "actions": [], "orders": [], "production": []}
         return self.processor.persistence.database_snapshot()
+
+    def health(self) -> dict:
+        transport_connected = self.mqtt_transport.connected if self.communication_mode == "MQTT" else self.opc_connected
+        return {"status": "healthy" if transport_connected else "starting", "transport": self.communication_mode, "transport_connected": transport_connected, "database_configured": self.processor.persistence is not None}
 
     def audit_operator_action(self, username: str, role: str, method: str, path: str, status: int, client_address: str | None) -> None:
         dashboard_security = self.settings["security"]["dashboard"]

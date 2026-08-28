@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+__pycache__
+*.pyc
+*.log
+certs
+mqtt/passwords
+tests
+lineage
+dashboard-preview.png

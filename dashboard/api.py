@@ -189,6 +189,12 @@ async def dashboard() -> FileResponse:
     return FileResponse(DIRECTORY / "index.html")
 
 
+@app.get("/healthz", include_in_schema=False)
+async def health() -> JSONResponse:
+    result = controller.health()
+    return JSONResponse(result, status_code=200 if result["transport_connected"] else 503)
+
+
 @app.get("/api/auth/me")
 async def current_user(request: Request) -> dict:
     user = read_session(request.cookies.get(COOKIE_NAME))
@@ -222,8 +228,9 @@ async def logout() -> JSONResponse:
 
 @app.post("/api/system/restart")
 async def restart_dashboard() -> dict:
-    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-    subprocess.Popen([sys.executable, "-m", "dashboard.restart"], cwd=DIRECTORY.parent, creationflags=flags, close_fds=True)
+    if not os.getenv("MES_CONTAINERIZED"):
+        flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        subprocess.Popen([sys.executable, "-m", "dashboard.restart"], cwd=DIRECTORY.parent, creationflags=flags, close_fds=True)
 
     async def stop_current_process() -> None:
         await asyncio.sleep(0.75)
@@ -404,7 +411,7 @@ async def live(websocket: WebSocket) -> None:
 
 def main() -> None:
     import uvicorn
-    uvicorn.run("dashboard.api:app", host="127.0.0.1", port=8000)
+    uvicorn.run("dashboard.api:app", host=os.getenv("MES_DASHBOARD_HOST", "127.0.0.1"), port=int(os.getenv("MES_DASHBOARD_PORT", "8000")))
 
 
 if __name__ == "__main__":
