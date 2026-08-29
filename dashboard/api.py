@@ -379,7 +379,7 @@ async def ontology_status(request: Request) -> dict:
 @app.get("/api/ontology/search")
 async def ontology_search(request: Request, q: str = Query(min_length=2, max_length=500),
                           depth: int = Query(2, ge=1, le=4)) -> dict:
-    return ontology.search(q, request_role(request), depth)
+    return await asyncio.to_thread(ontology.search, q, request_role(request), depth)
 
 
 @app.get("/api/ontology/entities/{entity_id:path}")
@@ -408,7 +408,12 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
             model = None
             tool_result = None
         elif plan.mode == AssistantMode.DATA:
-            tool_result = assistant_orchestrator.execute(plan, role=request_role(request))
+            if plan.tool in {"search_knowledge", "search_ontology"}:
+                tool_result = await asyncio.to_thread(
+                    assistant_orchestrator.execute, plan, request_role(request)
+                )
+            else:
+                tool_result = assistant_orchestrator.execute(plan, role=request_role(request))
             answer, model = await assistant_service.grounded_chat(
                 conversation_key, message, plan.intent.value, tool_result.as_context()
             )

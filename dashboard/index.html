@@ -69,7 +69,7 @@
       <article class="panel knowledge-library"><div class="panel-heading"><h2>Indexed documents</h2><button id="refresh-knowledge" type="button">Refresh</button></div><div id="knowledge-documents" class="empty">No documents indexed</div></article>
     </section>
     <section id="ontology-panel" class="tab-page" hidden>
-      <div class="database-heading"><div><p class="eyebrow">STAGE 2 · PHASE 8</p><h2>MES Ontology Explorer</h2><p>Traverse explicit relationships across machines, sensors, alarms, procedures, orders, and maintenance work.</p></div><div class="ontology-summary"><strong id="ontology-node-count">0 nodes</strong><span id="ontology-edge-count">0 relationships</span></div></div>
+      <div class="database-heading"><div><p class="eyebrow">STAGE 2 · PHASE 8 · HYBRID GRAPH SEARCH</p><h2>MES Ontology Explorer</h2><p>Traverse explicit relationships across machines, sensors, alarms, procedures, orders, and maintenance work.</p></div><div class="ontology-summary"><strong id="ontology-search-mode">Checking search…</strong><span id="ontology-node-count">0 nodes</span><span id="ontology-edge-count">0 relationships</span></div></div>
       <article class="panel ontology-search"><form id="ontology-search-form"><label for="ontology-query">Relationship question</label><input id="ontology-query" type="search" minlength="2" maxlength="500" value="everything related to the pressure problem on Machine 01" required><label for="ontology-depth">Depth</label><select id="ontology-depth"><option value="1">1 hop</option><option value="2" selected>2 hops</option><option value="3">3 hops</option><option value="4">4 hops</option></select><button type="submit">Traverse graph</button></form><span id="ontology-error" role="alert"></span></article>
       <section class="ontology-layout"><article class="panel"><div class="panel-heading"><h2>Related entities</h2><span id="ontology-seeds">No search yet</span></div><div id="ontology-nodes" class="ontology-nodes empty">Search the ontology to display entities</div></article><article class="panel"><div class="panel-heading"><h2>Relationships</h2><span>Directed graph</span></div><div id="ontology-edges" class="ontology-edges empty">No relationships selected</div></article></section>
     </section>
@@ -140,5 +140,5 @@
     </form>
   </aside></div>
   <div id="login-screen" class="login-screen" hidden><form id="login-form" class="login-card"><p class="eyebrow">SECURE DASHBOARD</p><h2>Sign in to MES</h2><p>Use your assigned administrator or operator account.</p><label>Username<input id="login-username" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><span id="login-error" role="alert"></span></form></div>
-  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=16.0"></script>
+  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=17.0"></script>
 </body></html>

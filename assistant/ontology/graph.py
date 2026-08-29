@@ -1,5 +1,7 @@
 """Dynamic MES relationship graph built from governed controller and RAG data."""
 from __future__ import annotations
+import math
+import os
 import re
 from collections import deque
 
@@ -11,6 +13,12 @@ class MESOntology:
     )
     def __init__(self, controller, knowledge_store):
         self.controller, self.knowledge_store = controller, knowledge_store
+        self.embedder = knowledge_store.embedder
+        self.search_mode = os.getenv("MES_ONTOLOGY_SEARCH_MODE", "hybrid").strip().lower()
+        try: self.semantic_weight = max(0.0, min(1.0, float(os.getenv("MES_ONTOLOGY_SEMANTIC_WEIGHT", "0.60"))))
+        except ValueError: self.semantic_weight = 0.60
+        self._vector_cache = {}
+        self.last_embedding_error = ""
 
     @staticmethod
     def _node(identifier, kind, label, **properties):
@@ -60,13 +68,31 @@ class MESOntology:
         aliases={"hydraulic":{"pressure"},"heat":{"temperature"},"fault":{"alarm"},"job":{"order"},"work":{"maintenance"}}
         expanded=set(terms)
         for term in terms: expanded.update(aliases.get(term,set()))
-        seeds=[]
+        candidates=[]
         for node in nodes.values():
             haystack=self._terms(f"{node['id']} {node['type']} {node['label']} {' '.join(map(str,node['properties'].values()))}")
             score=len(expanded & haystack)
             if node["id"].lower() in query.lower(): score+=4
-            if score: seeds.append((score,node["id"]))
-        seeds=[identifier for _,identifier in sorted(seeds,reverse=True)[:8]]
+            candidates.append({"id":node["id"],"lexical":float(score),"semantic":0.0})
+        hybrid=self.search_mode=="hybrid" and self.embedder.configured
+        if hybrid:
+            try:
+                texts={identifier:self._embedding_text(node) for identifier,node in nodes.items()}
+                missing=[(identifier,text) for identifier,text in texts.items() if identifier not in self._vector_cache or self._vector_cache[identifier][0]!=text]
+                if missing:
+                    vectors=self.embedder.embed([text for _,text in missing])
+                    for (identifier,text),vector in zip(missing,vectors): self._vector_cache[identifier]=(text,vector)
+                query_vector=self.embedder.embed([query])[0]
+                for item in candidates: item["semantic"]=max(0.0,self._cosine(query_vector,self._vector_cache[item["id"]][1]))
+                self.last_embedding_error=""
+            except Exception as error:
+                hybrid=False; self.last_embedding_error=str(error)
+        maximum=max((x["lexical"] for x in candidates),default=1) or 1
+        for item in candidates:
+            lexical=item["lexical"]/maximum
+            item["score"]=(1-self.semantic_weight)*lexical+self.semantic_weight*item["semantic"] if hybrid else lexical
+        ranked=[x for x in sorted(candidates,key=lambda item:item["score"],reverse=True) if x["score"]>0]
+        seeds=[item["id"] for item in ranked[:8]]
         adjacency={identifier:[] for identifier in nodes}
         for edge in graph["edges"]:
             adjacency.setdefault(edge["source"],[]).append((edge,edge["target"])); adjacency.setdefault(edge["target"],[]).append((edge,edge["source"]))
@@ -77,7 +103,19 @@ class MESOntology:
             for _,neighbor in adjacency.get(current,[]):
                 if neighbor not in selected: selected.add(neighbor); queue.append((neighbor,level+1))
         selected_edges=[x for x in graph["edges"] if x["source"] in selected and x["target"] in selected]
-        return {"query":query,"seed_ids":seeds,"nodes":[nodes[x] for x in selected],"edges":selected_edges,"count":len(selected),"depth":depth}
+        seed_scores=[{"id":item["id"],"score":round(item["score"],4),"lexical_score":round(item["lexical"]/maximum,4),"semantic_score":round(item["semantic"],4)} for item in ranked[:8]]
+        return {"query":query,"search_mode":"hybrid" if hybrid else "lexical","seed_ids":seeds,"seed_scores":seed_scores,"nodes":[nodes[x] for x in selected],"edges":selected_edges,"count":len(selected),"depth":depth}
+
+    @staticmethod
+    def _embedding_text(node):
+        stable={key:value for key,value in node["properties"].items() if key not in {"current_value","status","triggered_time"}}
+        return f"MES {node['type']}: {node['label']}. Identifier {node['id']}. " + " ".join(f"{key} {value}" for key,value in stable.items() if value not in {None,""})
+
+    @staticmethod
+    def _cosine(first,second):
+        if not first or not second or len(first)!=len(second): return 0.0
+        denominator=math.sqrt(sum(x*x for x in first))*math.sqrt(sum(x*x for x in second))
+        return sum(x*y for x,y in zip(first,second))/denominator if denominator else 0.0
 
     def entity(self, identifier, role="viewer"):
         graph=self.build(role); node=next((x for x in graph["nodes"] if x["id"]==identifier),None)
@@ -89,4 +127,5 @@ class MESOntology:
     def status(self, role="viewer"):
         graph=self.build(role); counts={}
         for node in graph["nodes"]:counts[node["type"]]=counts.get(node["type"],0)+1
-        return {"phase":8,"nodes":len(graph["nodes"]),"relationships":len(graph["edges"]),"entity_types":counts}
+        hybrid=self.search_mode=="hybrid" and self.embedder.configured
+        return {"phase":8,"nodes":len(graph["nodes"]),"relationships":len(graph["edges"]),"entity_types":counts,"search_mode":"hybrid" if hybrid else "lexical","semantic_weight":self.semantic_weight,"lexical_weight":1-self.semantic_weight,"embedding_model":self.embedder.model or None,"cached_entity_vectors":len(self._vector_cache),"last_embedding_error":self.last_embedding_error or None}

@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from assistant.knowledge import KnowledgeStore
 from assistant.ontology import MESOntology
@@ -48,3 +49,23 @@ class OntologyTests(unittest.TestCase):
                          (AssistantMode.DATA,Intent.ONTOLOGY_SEARCH,"search_ontology"))
         result=orchestrator.execute(plan,role="operator")
         self.assertEqual(result.tool,"search_ontology")
+
+    def test_semantic_seed_search_finds_entity_without_shared_words(self):
+        class FakeEmbedder:
+            configured=True
+            model="test-embedding"
+            def embed(self,texts):
+                return [[1.0,0.0] if "overforce" in text.lower() or "pressure" in text.lower()
+                        else [0.0,1.0] for text in texts]
+        self.knowledge.embedder=FakeEmbedder()
+        with patch.dict("os.environ",{"MES_ONTOLOGY_SEARCH_MODE":"hybrid",
+                                      "MES_ONTOLOGY_SEMANTIC_WEIGHT":"0.60"}):
+            ontology=MESOntology(FakeController(),self.knowledge)
+        result=ontology.search("overforce condition","operator",1)
+        self.assertEqual(result["search_mode"],"hybrid")
+        self.assertIn("PRESSURE-SENSOR-01",result["seed_ids"])
+        pressure=next(item for item in result["seed_scores"] if item["id"]=="PRESSURE-SENSOR-01")
+        self.assertEqual(pressure["lexical_score"],0.0)
+        self.assertGreater(pressure["semantic_score"],0.9)
+        status=ontology.status("operator")
+        self.assertEqual(status["semantic_weight"],0.6)
