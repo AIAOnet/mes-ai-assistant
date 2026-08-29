@@ -333,6 +333,16 @@ async def knowledge_documents(request: Request) -> dict:
     return {"documents": documents, "count": len(documents)}
 
 
+@app.get("/api/knowledge/documents/{document_id}")
+async def knowledge_document(document_id: str, request: Request) -> dict:
+    if not re.fullmatch(r"[a-f0-9]{20}", document_id):
+        raise HTTPException(status_code=422, detail="Invalid document ID")
+    document = knowledge_store.get(document_id, request_role(request))
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found or not authorized")
+    return {"document": document}
+
+
 @app.post("/api/knowledge/documents", status_code=201)
 async def upload_knowledge_document(
     request: Request, file: UploadFile = File(...), title: str = Form(""),

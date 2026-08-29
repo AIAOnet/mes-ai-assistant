@@ -63,14 +63,10 @@ class AssistantService:
             ModelMessage("system", DATA_PROMPT), *history, ModelMessage("user", user_content)
         ], temperature=0)
         sources = tool_context.get("sources", [])
-        source_lines = [f"- {item.get('title') or item['type']}: {item['id']}" +
-                        (f" (version {item['version']})" if item.get('version') else "") for item in sources]
         answer = re.sub(
             r"\n\s*Sources\s*\n.*$", "", response.content,
             flags=re.IGNORECASE | re.DOTALL,
         ).strip()
-        if source_lines:
-            answer = f"{answer}\n\nSources\n" + "\n".join(source_lines)
         self.store.replace(key, [*history, ModelMessage("user", question),
                                  ModelMessage("assistant", answer)])
         return answer, response.model

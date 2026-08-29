@@ -27,9 +27,11 @@ class KnowledgeStoreTests(unittest.TestCase):
         self.assertEqual(reloaded.list("viewer")[0]["version"], "2.1")
 
     def test_permissions_are_enforced_at_retrieval(self):
-        self.store.add("admin.txt", b"Confidential calibration master procedure", roles=["admin"])
+        document = self.store.add("admin.txt", b"Confidential calibration master procedure", roles=["admin"])
         self.assertEqual(self.store.search("calibration procedure", "operator"), [])
         self.assertEqual(len(self.store.search("calibration procedure", "admin")), 1)
+        self.assertIsNone(self.store.get(document["id"], "operator"))
+        self.assertEqual(self.store.get(document["id"], "admin")["title"], "admin.txt")
 
     def test_duplicate_and_unsupported_files_are_rejected(self):
         self.store.add("manual.txt", b"Approved machine operating manual")

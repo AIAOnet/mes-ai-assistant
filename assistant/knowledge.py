@@ -133,6 +133,10 @@ class KnowledgeStore:
         return self._public(record)
     def list(self,role="admin"):
         with self._lock: return [self._public(x) for x in reversed(self._index["documents"]) if role in x["roles"]]
+    def get(self,doc_id,role="admin"):
+        with self._lock:
+            record=next((x for x in self._index["documents"] if x["id"]==doc_id and role in x["roles"]),None)
+            return self._public(record) if record else None
     def delete(self,doc_id):
         with self._lock:
             record=next((x for x in self._index["documents"] if x["id"]==doc_id),None)

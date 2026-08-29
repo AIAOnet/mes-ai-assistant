@@ -58,7 +58,7 @@ class AssistantServiceTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(AssistantNotConfigured):
                 await AssistantService().chat("local:one", "What is the pressure?")
 
-    async def test_grounded_chat_appends_only_verified_sources(self) -> None:
+    async def test_grounded_chat_removes_model_invented_sources_for_structured_ui_citations(self) -> None:
         provider, service = FakeProvider(), AssistantService()
         async def response_with_unverified_sources(messages, temperature=0):
             provider.calls.append((messages, temperature))
@@ -73,9 +73,9 @@ class AssistantServiceTests(unittest.IsolatedAsyncioTestCase):
             answer, _ = await service.grounded_chat(
                 "alice:one", "What is the pressure?", "CURRENT_MACHINE_STATUS", context
             )
-        self.assertIn("Sources\n- machine_status: MACHINE-01", answer)
+        self.assertEqual(answer, "Pressure is 72 bar.")
         self.assertNotIn("invented", answer)
-        self.assertEqual(answer.count("Sources"), 1)
+        self.assertNotIn("Sources", answer)
         self.assertIn('"pressure":72', provider.calls[0][0][-1].content)
 
 
