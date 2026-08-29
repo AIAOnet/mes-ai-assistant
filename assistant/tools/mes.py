@@ -38,9 +38,20 @@ class MESReadTools:
         "status": ("Machine01.Status", None),
     }
 
-    def __init__(self, controller, knowledge_store=None) -> None:
+    def __init__(self, controller, knowledge_store=None, ontology=None) -> None:
         self.controller = controller
         self.knowledge_store = knowledge_store
+        self.ontology = ontology
+
+    def search_ontology(self, query: str, role: str = "viewer", depth: int = 2) -> ToolResult:
+        if self.ontology is None:
+            raise ToolNotFoundError("MES ontology is not configured")
+        result = self.ontology.search(query, role, depth)
+        if not result["nodes"]:
+            raise ToolNotFoundError("No related MES entities were found")
+        sources = [{"type":"ontology_entity","id":node["id"],
+                    "uri":f"/api/ontology/entities/{node['id']}"} for node in result["nodes"][:12]]
+        return ToolResult("search_ontology", result, sources)
 
     def search_knowledge(self, query: str, role: str = "viewer", machine_id: str = "") -> ToolResult:
         if self.knowledge_store is None:

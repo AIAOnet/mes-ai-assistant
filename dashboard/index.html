@@ -7,7 +7,7 @@
 <body>
   <header><div><p class="eyebrow">MES LEARNING ENVIRONMENT</p><h1>MACHINE-01</h1></div><div class="header-actions"><div class="identity" id="identity" hidden><span id="identity-name">—</span><small id="identity-role">—</small><button id="logout">Sign out</button></div><div class="connection"><span id="connection-dot"></span><span id="connection">Connecting…</span></div></div></header>
   <div class="dashboard-shell"><main>
-    <nav class="tab-nav" aria-label="Dashboard views"><button class="tab-button selected" data-tab="overview-panel">Overview</button><button class="tab-button" data-tab="production-panel">Production</button><button class="tab-button" data-tab="communication-panel">Communication</button><button class="tab-button" data-tab="data-flow-panel">Data Flow</button><button class="tab-button" data-tab="maintenance-panel">Maintenance Tasks <span id="maintenance-tab-count">0</span></button><button class="tab-button" data-admin data-tab="knowledge-panel">Knowledge / RAG</button><button class="tab-button" data-admin data-tab="security-panel">Security</button><button class="tab-button" data-admin data-tab="configuration-panel">Configuration</button><button class="tab-button" data-admin data-tab="diagnostics-panel">Diagnostics</button><button class="tab-button" data-admin data-tab="database-panel">Database</button></nav>
+    <nav class="tab-nav" aria-label="Dashboard views"><button class="tab-button selected" data-tab="overview-panel">Overview</button><button class="tab-button" data-tab="production-panel">Production</button><button class="tab-button" data-tab="communication-panel">Communication</button><button class="tab-button" data-tab="data-flow-panel">Data Flow</button><button class="tab-button" data-tab="maintenance-panel">Maintenance Tasks <span id="maintenance-tab-count">0</span></button><button class="tab-button" data-admin data-tab="knowledge-panel">Knowledge / RAG</button><button class="tab-button" data-tab="ontology-panel">Ontology</button><button class="tab-button" data-admin data-tab="security-panel">Security</button><button class="tab-button" data-admin data-tab="configuration-panel">Configuration</button><button class="tab-button" data-admin data-tab="diagnostics-panel">Diagnostics</button><button class="tab-button" data-admin data-tab="database-panel">Database</button></nav>
     <section id="overview-panel" class="tab-page selected">
     <section class="toolbar" aria-label="Simulation controls">
       <div><span class="toolbar-label">Simulation</span><button data-command="/api/simulation/start">Run</button><button data-command="/api/simulation/pause">Pause</button></div>
@@ -68,6 +68,11 @@
       </section>
       <article class="panel knowledge-library"><div class="panel-heading"><h2>Indexed documents</h2><button id="refresh-knowledge" type="button">Refresh</button></div><div id="knowledge-documents" class="empty">No documents indexed</div></article>
     </section>
+    <section id="ontology-panel" class="tab-page" hidden>
+      <div class="database-heading"><div><p class="eyebrow">STAGE 2 · PHASE 8</p><h2>MES Ontology Explorer</h2><p>Traverse explicit relationships across machines, sensors, alarms, procedures, orders, and maintenance work.</p></div><div class="ontology-summary"><strong id="ontology-node-count">0 nodes</strong><span id="ontology-edge-count">0 relationships</span></div></div>
+      <article class="panel ontology-search"><form id="ontology-search-form"><label for="ontology-query">Relationship question</label><input id="ontology-query" type="search" minlength="2" maxlength="500" value="everything related to the pressure problem on Machine 01" required><label for="ontology-depth">Depth</label><select id="ontology-depth"><option value="1">1 hop</option><option value="2" selected>2 hops</option><option value="3">3 hops</option><option value="4">4 hops</option></select><button type="submit">Traverse graph</button></form><span id="ontology-error" role="alert"></span></article>
+      <section class="ontology-layout"><article class="panel"><div class="panel-heading"><h2>Related entities</h2><span id="ontology-seeds">No search yet</span></div><div id="ontology-nodes" class="ontology-nodes empty">Search the ontology to display entities</div></article><article class="panel"><div class="panel-heading"><h2>Relationships</h2><span>Directed graph</span></div><div id="ontology-edges" class="ontology-edges empty">No relationships selected</div></article></section>
+    </section>
     <section id="security-panel" class="tab-page" hidden>
       <div class="database-heading"><div><p class="eyebrow">PHASE 9 · SECURITY</p><h2>Security Configuration</h2><p>Prepare dashboard access, encrypted transports, certificates, and auditing</p></div></div>
       <section class="security-readiness" aria-label="Security readiness"><article class="status-card"><span>OPC UA channel</span><strong id="opc-channel-status">—</strong><small id="opc-channel-policy">—</small></article><article class="status-card"><span>Dashboard secret</span><strong id="dashboard-secret-status">—</strong></article><article class="status-card"><span>MQTT password</span><strong id="mqtt-password-status">—</strong></article><article class="status-card"><span>Configuration</span><strong id="security-save-status">Saved</strong><button id="restart-dashboard" hidden>Restart dashboard</button></article></section>
@@ -122,7 +127,7 @@
     </section>
   </main>
   <aside class="assistant-panel" aria-label="AI Assistant">
-    <div class="assistant-heading"><div><p class="eyebrow">STAGE 2 · PHASE 7</p><h2>AI Assistant</h2></div><button id="assistant-clear" type="button" title="Start a new conversation">New chat</button></div>
+    <div class="assistant-heading"><div><p class="eyebrow">STAGE 2 · PHASE 8</p><h2>AI Assistant</h2></div><button id="assistant-clear" type="button" title="Start a new conversation">New chat</button></div>
     <div id="assistant-status" class="assistant-status">Checking model configuration…</div>
     <div id="assistant-context" class="assistant-context">Machine details · MACHINE-01</div>
     <div id="assistant-suggestions" class="assistant-suggestions" aria-label="Suggested questions"></div>
@@ -135,5 +140,5 @@
     </form>
   </aside></div>
   <div id="login-screen" class="login-screen" hidden><form id="login-form" class="login-card"><p class="eyebrow">SECURE DASHBOARD</p><h2>Sign in to MES</h2><p>Use your assigned administrator or operator account.</p><label>Username<input id="login-username" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><span id="login-error" role="alert"></span></form></div>
-  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=15.0"></script>
+  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=16.0"></script>
 </body></html>

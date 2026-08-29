@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 from assistant.models import ProviderError
 from assistant.knowledge import EmbeddingError, KnowledgeStore, KnowledgeValidationError, SUPPORTED_EXTENSIONS
+from assistant.ontology import MESOntology
 from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent, PageContext
 from assistant.service import AssistantNotConfigured, AssistantService
 from assistant.tools import MESReadTools, ToolNotFoundError, ToolValidationError
@@ -51,7 +52,8 @@ LOGGER = logging.getLogger("dashboard.api")
 controller = SimulationController()
 assistant_service = AssistantService()
 knowledge_store = KnowledgeStore(os.getenv("MES_RAG_DATA_PATH", "rag_data"))
-mes_tools = MESReadTools(controller, knowledge_store)
+ontology = MESOntology(controller, knowledge_store)
+mes_tools = MESReadTools(controller, knowledge_store, ontology)
 assistant_orchestrator = AssistantOrchestrator(mes_tools)
 
 
@@ -153,7 +155,7 @@ class LoginRequest(BaseModel):
 class AssistantPageContext(BaseModel):
     page: Literal[
         "machine_details", "production", "communication", "data_flow", "maintenance",
-        "security", "configuration", "diagnostics", "database", "knowledge", "alarm_details",
+        "security", "configuration", "diagnostics", "database", "knowledge", "ontology", "alarm_details",
     ]
     machine_id: str | None = Field(default=None, pattern=r"^MACHINE-\d{2}$")
     alarm_id: str | None = Field(default=None, min_length=3, max_length=66)
@@ -367,6 +369,25 @@ async def search_knowledge(request: Request, q: str = Query(min_length=2, max_le
         knowledge_store.search, q, request_role(request), limit, machine_id, alarm_type
     )
     return {"query": q, "results": results, "count": len(results)}
+
+
+@app.get("/api/ontology/status")
+async def ontology_status(request: Request) -> dict:
+    return ontology.status(request_role(request))
+
+
+@app.get("/api/ontology/search")
+async def ontology_search(request: Request, q: str = Query(min_length=2, max_length=500),
+                          depth: int = Query(2, ge=1, le=4)) -> dict:
+    return ontology.search(q, request_role(request), depth)
+
+
+@app.get("/api/ontology/entities/{entity_id:path}")
+async def ontology_entity(entity_id: str, request: Request) -> dict:
+    result = ontology.entity(entity_id, request_role(request))
+    if result is None:
+        raise HTTPException(status_code=404, detail="Ontology entity not found")
+    return result
 
 
 @app.post("/api/assistant/chat")
