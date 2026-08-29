@@ -27,7 +27,15 @@ class AssistantOrchestrator:
         if re.search(r"\b(everything related|related to|relationship|relationships|connected to|connections|linked to|ontology)\b", text):
             return QueryPlan(AssistantMode.DATA, Intent.ONTOLOGY_SEARCH, "search_ontology",
                              {"query":question,"depth":2}, context_data)
-        if re.search(r"\b(procedure|manual|sop|instruction|instructions|safety|troubleshoot|restart|repair|document|documentation|knowledge base)\b", text):
+        knowledge_guidance = bool(re.search(
+            r"\b(hydraulic|mechanical|component|components|equipment)\b", text
+        ) and re.search(
+            r"\b(what|which|how|could|should|involved|inspect|check|safe|excessive)\b", text
+        ))
+        if context.page == "knowledge" or knowledge_guidance or re.search(
+            r"\b(procedure|manual|sop|instruction|instructions|safety|troubleshoot|restart|repair|document|documentation|knowledge base)\b",
+            text,
+        ):
             return QueryPlan(AssistantMode.DATA, Intent.KNOWLEDGE_RETRIEVAL, "search_knowledge",
                              {"query": question, "machine_id": machine_id or context.machine_id or ""}, context_data)
         if context.alarm_id and (

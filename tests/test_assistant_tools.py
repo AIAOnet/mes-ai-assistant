@@ -120,6 +120,13 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual((plan.mode, plan.intent, plan.tool),
                          (AssistantMode.ASK, Intent.GENERAL_KNOWLEDGE, None))
 
+    def test_semantic_hydraulic_guidance_routes_to_knowledge_retrieval(self):
+        plan = self.orchestrator.plan(
+            "What components could be involved when hydraulic force becomes excessive?"
+        )
+        self.assertEqual((plan.mode, plan.intent, plan.tool),
+                         (AssistantMode.DATA, Intent.KNOWLEDGE_RETRIEVAL, "search_knowledge"))
+
     def test_current_oee_uses_data_tool(self):
         plan = self.orchestrator.plan("What is the current OEE?")
         self.assertEqual((plan.mode, plan.tool), (AssistantMode.DATA, "get_oee"))
