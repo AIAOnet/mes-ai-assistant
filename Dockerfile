@@ -13,6 +13,7 @@ COPY opc opc
 COPY mqtt mqtt
 COPY database database
 COPY dashboard dashboard
+COPY assistant assistant
 COPY config config
 
 EXPOSE 8000
