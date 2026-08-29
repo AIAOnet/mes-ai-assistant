@@ -311,7 +311,7 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
         if plan.intent == Intent.UNSUPPORTED_OPERATIONAL:
             answer = (
                 "That operational question requires historical or investigation tools that are "
-                "not available in Phase 2. I will not guess from general knowledge."
+                "not available until Phase 5 analytics. I will not guess from raw historical data."
             )
             assistant_service.remember_exchange(conversation_key, message, answer)
             model = None
@@ -364,9 +364,9 @@ async def mes_machine_status(machine_id: str) -> dict:
 
 
 @app.get("/api/mes/machines/{machine_id}/alarms")
-async def mes_machine_alarms(machine_id: str, active_only: bool = False) -> dict:
+async def mes_machine_alarms(machine_id: str, active_only: bool = False, period: str | None = None) -> dict:
     try:
-        return mes_tools.get_machine_alarms(machine_id, active_only).as_context()
+        return mes_tools.get_machine_alarms(machine_id, active_only, period).as_context()
     except ToolValidationError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
 
@@ -383,6 +383,38 @@ async def mes_production_status(machine_id: str) -> dict:
 async def mes_oee(machine_id: str) -> dict:
     try:
         return mes_tools.get_oee(machine_id).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/machines/{machine_id}/history")
+async def mes_machine_history(machine_id: str, metric: str, period: str, limit: int = 100) -> dict:
+    try:
+        return mes_tools.get_machine_history(machine_id, metric, period, limit).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/machines/{machine_id}/events")
+async def mes_event_history(machine_id: str, period: str, limit: int = 100) -> dict:
+    try:
+        return mes_tools.search_events(machine_id, period, limit).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/machines/{machine_id}/maintenance")
+async def mes_maintenance_history(machine_id: str, period: str, limit: int = 100) -> dict:
+    try:
+        return mes_tools.get_maintenance_history(machine_id, period, limit).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/machines/{machine_id}/production-history")
+async def mes_production_history(machine_id: str, period: str, limit: int = 100) -> dict:
+    try:
+        return mes_tools.get_production_history(machine_id, period, limit).as_context()
     except ToolValidationError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
 

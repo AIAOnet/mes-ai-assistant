@@ -246,11 +246,12 @@ class SimulationController:
         return self.processor.persistence.database_snapshot()
 
     def read_machine_alarms(
-        self, machine_id: str, active_only: bool = False, since: datetime | None = None
+        self, machine_id: str, active_only: bool = False, since: datetime | None = None,
+        until: datetime | None = None,
     ) -> list[dict]:
         if self.processor.persistence is not None:
             return self.processor.persistence.read_machine_alarms(
-                machine_id, active_only=active_only, since=since
+                machine_id, active_only=active_only, since=since, until=until
             )
         alarms = [
             {
@@ -267,8 +268,29 @@ class SimulationController:
             if alarm.machine_id == machine_id
             and (not active_only or alarm.status.value == "ACTIVE")
             and (since is None or alarm.triggered_time >= since)
+            and (until is None or alarm.triggered_time < until)
         ]
         return list(reversed(alarms[-100:]))
+
+    def read_machine_history(self, machine_id: str, tag_name: str, start: datetime, end: datetime, limit: int = 200) -> list[dict]:
+        if self.processor.persistence is None:
+            return []
+        return self.processor.persistence.read_machine_history(machine_id, tag_name, start, end, limit)
+
+    def read_event_history(self, machine_id: str, start: datetime, end: datetime, limit: int = 200) -> list[dict]:
+        if self.processor.persistence is None:
+            return []
+        return self.processor.persistence.read_event_history(machine_id, start, end, limit)
+
+    def read_maintenance_history(self, machine_id: str, start: datetime, end: datetime, limit: int = 100) -> list[dict]:
+        if self.processor.persistence is None:
+            return []
+        return self.processor.persistence.read_maintenance_history(machine_id, start, end, limit)
+
+    def read_production_history(self, machine_id: str, start: datetime, end: datetime, limit: int = 100) -> list[dict]:
+        if self.processor.persistence is None:
+            return []
+        return self.processor.persistence.read_production_history(machine_id, start, end, limit)
 
     def read_production_status(self, machine_id: str) -> dict:
         ideal_cycle_seconds = self.update_interval * self.machine.production_interval_ticks

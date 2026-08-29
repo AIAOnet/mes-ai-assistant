@@ -10,11 +10,27 @@ class FakeController:
         return {"machine_status": "RUNNING", "pressure": 72.0, "temperature": 58.0,
                 "rpm": 1450, "production_count": 47}
 
-    def read_machine_alarms(self, machine_id, active_only=False, since=None):
+    def read_machine_alarms(self, machine_id, active_only=False, since=None, until=None):
         alarms = [{"id": "A-103", "machine_id": machine_id, "type": "HIGH_PRESSURE",
                    "severity": "HIGH", "status": "ACTIVE", "message": "High pressure",
                    "triggered_time": "2026-08-29T10:32:00+00:00", "resolved_time": None}]
         return alarms if not active_only or alarms[0]["status"] == "ACTIVE" else []
+
+    def read_machine_history(self, machine_id, tag_name, start, end, limit):
+        return [{"id": "1", "machine_id": machine_id, "tag": tag_name,
+                 "value": 68.0, "time": start.isoformat()},
+                {"id": "2", "machine_id": machine_id, "tag": tag_name,
+                 "value": 72.0, "time": end.isoformat()}][:limit]
+
+    def read_event_history(self, machine_id, start, end, limit):
+        return [{"id": "E-1", "machine_id": machine_id, "type": "CONDITION_ENTERED",
+                 "condition": "HIGH_PRESSURE", "value": 101, "time": start.isoformat()}]
+
+    def read_maintenance_history(self, machine_id, start, end, limit):
+        return [{"TaskId": 1, "MachineId": machine_id, "Status": "COMPLETED"}]
+
+    def read_production_history(self, machine_id, start, end, limit):
+        return [{"ProductionOrderId": "PO-1", "TotalQuantity": 47}]
 
     def read_production_status(self, machine_id):
         return {"machine_id": machine_id, "machine_production_count": 47,
@@ -64,6 +80,24 @@ class MESReadToolTests(unittest.TestCase):
         result = self.tools.get_production_status("MACHINE-01", "PO-1")
         self.assertEqual(result.data["selected_order_id"], "PO-1")
         self.assertEqual(len(result.data["orders"]), 1)
+
+    def test_historical_readings_have_bounded_window_and_source(self):
+        result = self.tools.get_machine_history("MACHINE-01", "pressure", "last_24_hours")
+        self.assertEqual(result.data["metric"], "pressure")
+        self.assertEqual(result.data["unit"], "bar")
+        self.assertEqual(result.data["count"], 2)
+        self.assertEqual(result.sources[0]["type"], "machine_readings")
+
+    def test_historical_period_and_metric_are_allow_listed(self):
+        with self.assertRaises(ToolValidationError):
+            self.tools.get_machine_history("MACHINE-01", "voltage", "last_1_hours")
+        with self.assertRaises(ToolValidationError):
+            self.tools.get_machine_history("MACHINE-01", "pressure", "last_31_days")
+
+    def test_all_historical_data_families_are_available(self):
+        self.assertEqual(self.tools.search_events("MACHINE-01", "today").data["count"], 1)
+        self.assertEqual(self.tools.get_maintenance_history("MACHINE-01", "yesterday").data["count"], 1)
+        self.assertEqual(self.tools.get_production_history("MACHINE-01", "last_1_days").data["count"], 1)
 
 
 class OrchestratorTests(unittest.TestCase):
@@ -135,6 +169,24 @@ class OrchestratorTests(unittest.TestCase):
             "chat-4",
         )
         self.assertNotIn("alarm_id", plan.context)
+
+    def test_pressure_readings_last_hour_use_historical_tool(self):
+        plan = self.orchestrator.plan("Show pressure readings from the last hour")
+        self.assertEqual(plan.tool, "get_machine_history")
+        self.assertEqual(plan.arguments["period"], "last_1_hours")
+        self.assertEqual(plan.arguments["metric"], "pressure")
+
+    def test_alarm_and_production_history_route_to_specific_tools(self):
+        alarm = self.orchestrator.plan("Show alarms from the last 24 hours")
+        production = self.orchestrator.plan("Show today's production history")
+        self.assertEqual(alarm.tool, "get_machine_alarms")
+        self.assertEqual(alarm.arguments["period"], "last_24_hours")
+        self.assertEqual(production.tool, "get_production_history")
+
+    def test_trend_calculation_remains_fail_closed_until_phase_five(self):
+        plan = self.orchestrator.plan("Any pressure increases in the last 24 hours?")
+        self.assertEqual(plan.intent, Intent.UNSUPPORTED_OPERATIONAL)
+        self.assertIsNone(plan.tool)
 
 
 if __name__ == "__main__":

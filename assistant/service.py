@@ -35,7 +35,7 @@ class AssistantService:
 
     def status(self) -> dict:
         config = AssistantConfiguration.from_environment()
-        return {"configured": config.configured, "model": config.model or None, "phase": 1}
+        return {"configured": config.configured, "model": config.model or None, "phase": 4}
 
     def _provider(self, config: AssistantConfiguration) -> ModelProvider:
         return OpenAICompatibleProvider(config.endpoint, config.api_key, config.model, config.timeout_seconds)

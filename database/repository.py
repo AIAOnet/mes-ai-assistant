@@ -71,7 +71,7 @@ class SQLServerRepository:
 
     def read_machine_alarms(
         self, machine_id: str, active_only: bool = False,
-        since: datetime | None = None, limit: int = 100
+        since: datetime | None = None, until: datetime | None = None, limit: int = 100
     ) -> list[dict]:
         """Read alarms through fixed SQL with allow-listed scalar parameters."""
         limit = max(1, min(limit, 200))
@@ -83,6 +83,9 @@ class SQLServerRepository:
         if since is not None:
             conditions.append("TriggeredTime >= %s")
             parameters.append(since)
+        if until is not None:
+            conditions.append("TriggeredTime < %s")
+            parameters.append(until)
         query = f"""
             SELECT TOP {limit} AlarmId, MachineId, AlarmType, Severity, Status,
                 Message, TriggeredTime, ResolvedTime
@@ -100,6 +103,77 @@ class SQLServerRepository:
                     "triggered_time": row["TriggeredTime"].isoformat(),
                     "resolved_time": row["ResolvedTime"].isoformat() if row["ResolvedTime"] else None,
                 } for row in cursor.fetchall()]
+
+    def read_machine_history(
+        self, machine_id: str, tag_name: str, start: datetime, end: datetime, limit: int = 200
+    ) -> list[dict]:
+        limit = max(1, min(limit, 500))
+        with _connect(self.connection_string) as connection:
+            with connection.cursor(as_dict=True) as cursor:
+                cursor.execute(f"""
+                    SELECT TOP {limit} ReadingId, MachineId, TagName, NumericValue,
+                        TextValue, RecordedTime
+                    FROM dbo.MachineReadings
+                    WHERE MachineId=%s AND TagName=%s AND RecordedTime >= %s AND RecordedTime < %s
+                    ORDER BY RecordedTime ASC
+                """, (machine_id, tag_name, start, end))
+                return [{
+                    "id": str(row["ReadingId"]), "machine_id": row["MachineId"],
+                    "tag": row["TagName"], "value": row["NumericValue"] if row["NumericValue"] is not None else row["TextValue"],
+                    "time": row["RecordedTime"].isoformat(),
+                } for row in cursor.fetchall()]
+
+    def read_event_history(
+        self, machine_id: str, start: datetime, end: datetime, limit: int = 200
+    ) -> list[dict]:
+        limit = max(1, min(limit, 500))
+        with _connect(self.connection_string) as connection:
+            with connection.cursor(as_dict=True) as cursor:
+                cursor.execute(f"""
+                    SELECT TOP {limit} EventId, MachineId, EventType, ConditionName,
+                        NumericValue, OccurredTime FROM dbo.[Events]
+                    WHERE MachineId=%s AND OccurredTime >= %s AND OccurredTime < %s
+                    ORDER BY OccurredTime ASC
+                """, (machine_id, start, end))
+                return [{"id": str(row["EventId"]), "machine_id": row["MachineId"],
+                         "type": row["EventType"], "condition": row["ConditionName"],
+                         "value": row["NumericValue"], "time": row["OccurredTime"].isoformat()}
+                        for row in cursor.fetchall()]
+
+    def read_maintenance_history(
+        self, machine_id: str, start: datetime, end: datetime, limit: int = 100
+    ) -> list[dict]:
+        limit = max(1, min(limit, 200))
+        with _connect(self.connection_string) as connection:
+            with connection.cursor(as_dict=True) as cursor:
+                cursor.execute(f"""
+                    SELECT TOP {limit} TaskId, MachineId, RelatedAlarmId, Description,
+                        Priority, Status, CreatedTime, CompletedTime
+                    FROM dbo.MaintenanceTasks
+                    WHERE MachineId=%s AND CreatedTime >= %s AND CreatedTime < %s
+                    ORDER BY CreatedTime DESC
+                """, (machine_id, start, end))
+                return [{key: value.isoformat() if isinstance(value, datetime) else value
+                         for key, value in row.items()} for row in cursor.fetchall()]
+
+    def read_production_history(
+        self, machine_id: str, start: datetime, end: datetime, limit: int = 100
+    ) -> list[dict]:
+        limit = max(1, min(limit, 200))
+        with _connect(self.connection_string) as connection:
+            with connection.cursor(as_dict=True) as cursor:
+                cursor.execute(f"""
+                    SELECT TOP {limit} o.ProductionOrderId, o.ProductName, o.Status,
+                        o.TargetQuantity, o.StartedTime, o.CompletedTime,
+                        r.TotalQuantity, r.GoodQuantity, r.RejectedQuantity, r.RecordedTime
+                    FROM dbo.ProductionOrders o
+                    LEFT JOIN dbo.ProductionRecords r ON r.ProductionOrderId=o.ProductionOrderId
+                    WHERE o.MachineId=%s AND COALESCE(r.RecordedTime,o.StartedTime,o.CompletedTime) >= %s
+                        AND COALESCE(r.RecordedTime,o.StartedTime,o.CompletedTime) < %s
+                    ORDER BY COALESCE(r.RecordedTime,o.StartedTime,o.CompletedTime) DESC
+                """, (machine_id, start, end))
+                return [{key: value.isoformat() if isinstance(value, datetime) else value
+                         for key, value in row.items()} for row in cursor.fetchall()]
 
     def persist_reading(
         self, machine_id: str, tag_name: str, value: object
