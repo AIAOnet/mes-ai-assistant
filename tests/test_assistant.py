@@ -58,6 +58,26 @@ class AssistantServiceTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(AssistantNotConfigured):
                 await AssistantService().chat("local:one", "What is the pressure?")
 
+    async def test_grounded_chat_appends_only_verified_sources(self) -> None:
+        provider, service = FakeProvider(), AssistantService()
+        async def response_with_unverified_sources(messages, temperature=0):
+            provider.calls.append((messages, temperature))
+            return ModelResponse("Pressure is 72 bar.\n\nSources\n- invented: X-1", "test-model")
+        provider.generate = response_with_unverified_sources
+        environment = {"MES_AI_API_ENDPOINT": "https://models.example/chat/completions",
+                       "MES_AI_API_KEY": "secret", "MES_AI_MODEL": "test-model"}
+        context = {"tool": "get_machine_status", "data": {"pressure": 72},
+                   "sources": [{"type": "machine_status", "id": "MACHINE-01",
+                                "uri": "/api/mes/machines/MACHINE-01/status"}]}
+        with patch.dict(os.environ, environment, clear=True), patch.object(service, "_provider", return_value=provider):
+            answer, _ = await service.grounded_chat(
+                "alice:one", "What is the pressure?", "CURRENT_MACHINE_STATUS", context
+            )
+        self.assertIn("Sources\n- machine_status: MACHINE-01", answer)
+        self.assertNotIn("invented", answer)
+        self.assertEqual(answer.count("Sources"), 1)
+        self.assertIn('"pressure":72', provider.calls[0][0][-1].content)
+
 
 class OpenAICompatibleProviderTests(unittest.TestCase):
     def test_reasoning_tags_are_removed_from_user_facing_answer(self) -> None:

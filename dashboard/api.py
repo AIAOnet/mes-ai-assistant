@@ -19,7 +19,9 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from assistant.models import ProviderError
+from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent
 from assistant.service import AssistantNotConfigured, AssistantService
+from assistant.tools import MESReadTools, ToolValidationError
 from .controller import SimulationController
 from .auth import COOKIE_NAME, authenticate, configured_users, create_session, read_session, secure_cookie_enabled
 from .logging_config import configure_logging, correlation_id
@@ -46,6 +48,8 @@ configure_logging()
 LOGGER = logging.getLogger("dashboard.api")
 controller = SimulationController()
 assistant_service = AssistantService()
+mes_tools = MESReadTools(controller)
+assistant_orchestrator = AssistantOrchestrator(mes_tools)
 
 
 class ThresholdSettings(BaseModel):
@@ -288,14 +292,40 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
     if not message:
         raise HTTPException(status_code=422, detail="Message is required")
     try:
-        answer, model = await assistant_service.chat(
-            assistant_conversation_key(request, chat_request.conversation_id), message
-        )
+        conversation_key = assistant_conversation_key(request, chat_request.conversation_id)
+        plan = assistant_orchestrator.plan(message)
+        if plan.intent == Intent.UNSUPPORTED_OPERATIONAL:
+            answer = (
+                "That operational question requires historical or investigation tools that are "
+                "not available in Phase 2. I will not guess from general knowledge."
+            )
+            assistant_service.remember_exchange(conversation_key, message, answer)
+            model = None
+            tool_result = None
+        elif plan.mode == AssistantMode.DATA:
+            tool_result = assistant_orchestrator.execute(plan)
+            answer, model = await assistant_service.grounded_chat(
+                conversation_key, message, plan.intent.value, tool_result.as_context()
+            )
+        else:
+            tool_result = None
+            answer, model = await assistant_service.chat(conversation_key, message)
     except AssistantNotConfigured as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except ProviderError as error:
         raise HTTPException(status_code=502, detail=str(error)) from error
-    return {"answer": answer, "model": model, "conversation_id": chat_request.conversation_id}
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    return {
+        "answer": answer,
+        "model": model,
+        "conversation_id": chat_request.conversation_id,
+        "mode": plan.mode.value,
+        "intent": plan.intent.value,
+        "tool": plan.tool,
+        "tool_arguments": plan.arguments,
+        "sources": tool_result.sources if tool_result else [],
+    }
 
 
 @app.delete("/api/assistant/conversations/{conversation_id}")
@@ -304,6 +334,57 @@ async def clear_assistant_conversation(conversation_id: str, request: Request) -
         raise HTTPException(status_code=422, detail="Invalid conversation ID")
     assistant_service.clear(assistant_conversation_key(request, conversation_id))
     return {"cleared": True}
+
+
+@app.get("/api/mes/machines/{machine_id}/status")
+async def mes_machine_status(machine_id: str) -> dict:
+    try:
+        return mes_tools.get_machine_status(machine_id).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/machines/{machine_id}/alarms")
+async def mes_machine_alarms(machine_id: str, active_only: bool = False) -> dict:
+    try:
+        return mes_tools.get_machine_alarms(machine_id, active_only).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/machines/{machine_id}/production")
+async def mes_production_status(machine_id: str) -> dict:
+    try:
+        return mes_tools.get_production_status(machine_id).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/machines/{machine_id}/oee")
+async def mes_oee(machine_id: str) -> dict:
+    try:
+        return mes_tools.get_oee(machine_id).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/alarms/{alarm_id}")
+async def mes_alarm_details(alarm_id: str) -> dict:
+    alarm = next((item for item in controller.read_machine_alarms("MACHINE-01") if item["id"] == alarm_id), None)
+    if alarm is None:
+        raise HTTPException(status_code=404, detail="Alarm not found")
+    return {"data": alarm, "sources": [{"type": "alarm", "id": alarm_id,
+                                        "uri": f"/api/mes/alarms/{alarm_id}"}]}
+
+
+@app.get("/api/mes/production-orders/{order_id}")
+async def mes_production_order(order_id: str) -> dict:
+    orders = controller.read_production_status("MACHINE-01")["orders"]
+    order = next((item for item in orders if item["id"] == order_id), None)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Production order not found")
+    return {"data": order, "sources": [{"type": "production_order", "id": order_id,
+                                        "uri": f"/api/mes/production-orders/{order_id}"}]}
 
 
 @app.post("/api/system/restart")

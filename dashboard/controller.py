@@ -245,6 +245,73 @@ class SimulationController:
             return {"readings": [], "events": [], "alarms": [], "tasks": [], "audit": [], "actions": [], "orders": [], "production": []}
         return self.processor.persistence.database_snapshot()
 
+    def read_machine_alarms(
+        self, machine_id: str, active_only: bool = False, since: datetime | None = None
+    ) -> list[dict]:
+        if self.processor.persistence is not None:
+            return self.processor.persistence.read_machine_alarms(
+                machine_id, active_only=active_only, since=since
+            )
+        alarms = [
+            {
+                "id": alarm.alarm_id,
+                "machine_id": alarm.machine_id,
+                "type": alarm.alarm_type,
+                "severity": alarm.severity,
+                "status": alarm.status.value,
+                "message": alarm.message,
+                "triggered_time": alarm.triggered_time.isoformat(),
+                "resolved_time": alarm.resolved_time.isoformat() if alarm.resolved_time else None,
+            }
+            for alarm in self.processor.alarm_manager.alarms
+            if alarm.machine_id == machine_id
+            and (not active_only or alarm.status.value == "ACTIVE")
+            and (since is None or alarm.triggered_time >= since)
+        ]
+        return list(reversed(alarms[-100:]))
+
+    def read_production_status(self, machine_id: str) -> dict:
+        ideal_cycle_seconds = self.update_interval * self.machine.production_interval_ticks
+        orders = [
+            {
+                "id": order.order_id,
+                "machine_id": machine_id,
+                "product_name": order.product_name,
+                "status": order.status.value,
+                "target_quantity": order.target_quantity,
+                "total_quantity": order.total_quantity,
+                "good_quantity": order.good_quantity,
+                "rejected_quantity": order.rejected_quantity,
+                "oee": order.oee(ideal_cycle_seconds),
+            }
+            for order in reversed(self.production_orders[-20:])
+        ]
+        return {
+            "machine_id": machine_id,
+            "machine_production_count": self.machine.production_count,
+            "active_order_id": self.active_order.order_id if self.active_order else None,
+            "orders": orders,
+        }
+
+    def read_oee(self, machine_id: str) -> dict:
+        order = self.active_order
+        if order is None:
+            return {
+                "machine_id": machine_id,
+                "production_order_id": None,
+                "availability": None,
+                "performance": None,
+                "quality": None,
+                "oee": None,
+                "reason": "No active production order",
+            }
+        ideal_cycle_seconds = self.update_interval * self.machine.production_interval_ticks
+        return {
+            "machine_id": machine_id,
+            "production_order_id": order.order_id,
+            **order.oee(ideal_cycle_seconds),
+        }
+
     def health(self) -> dict:
         transport_connected = self.mqtt_transport.connected if self.communication_mode == "MQTT" else self.opc_connected
         return {"status": "healthy" if transport_connected else "starting", "transport": self.communication_mode, "transport_connected": transport_connected, "database_configured": self.processor.persistence is not None}

@@ -1,5 +1,18 @@
 # MES Factory Simulation
 
+## Stage 2 AI assistant
+
+Phase 1 adds the right-side chat panel and an OpenAI-compatible model provider configured
+through `.env`. Phase 2 routes operational questions deterministically into the read-only,
+allow-listed tools `get_machine_status`, `get_machine_alarms`,
+`get_production_status`, and `get_oee`.
+
+The model never receives SQL, OPC UA, MQTT, or simulator access. It receives only the
+minimum structured tool result needed to explain an answer, and the server appends verified
+MES identifiers as sources. General definitions remain in Ask Mode; current factory
+questions use Data Mode. Unsupported historical, trend, maintenance, and root-cause
+questions fail closed until their later governed tools are implemented.
+
 This project is a hands-on learning environment for the path:
 
 ```text

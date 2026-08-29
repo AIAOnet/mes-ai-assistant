@@ -69,6 +69,38 @@ class SQLServerRepository:
                 cursor.execute("SELECT 1")
                 return cursor.fetchone()[0] == 1
 
+    def read_machine_alarms(
+        self, machine_id: str, active_only: bool = False,
+        since: datetime | None = None, limit: int = 100
+    ) -> list[dict]:
+        """Read alarms through fixed SQL with allow-listed scalar parameters."""
+        limit = max(1, min(limit, 200))
+        conditions = ["MachineId = %s"]
+        parameters: list[object] = [machine_id]
+        if active_only:
+            conditions.append("Status = %s")
+            parameters.append("ACTIVE")
+        if since is not None:
+            conditions.append("TriggeredTime >= %s")
+            parameters.append(since)
+        query = f"""
+            SELECT TOP {limit} AlarmId, MachineId, AlarmType, Severity, Status,
+                Message, TriggeredTime, ResolvedTime
+            FROM dbo.Alarms
+            WHERE {" AND ".join(conditions)}
+            ORDER BY TriggeredTime DESC
+        """
+        with _connect(self.connection_string) as connection:
+            with connection.cursor(as_dict=True) as cursor:
+                cursor.execute(query, tuple(parameters))
+                return [{
+                    "id": row["AlarmId"], "machine_id": row["MachineId"],
+                    "type": row["AlarmType"], "severity": row["Severity"],
+                    "status": row["Status"], "message": row["Message"],
+                    "triggered_time": row["TriggeredTime"].isoformat(),
+                    "resolved_time": row["ResolvedTime"].isoformat() if row["ResolvedTime"] else None,
+                } for row in cursor.fetchall()]
+
     def persist_reading(
         self, machine_id: str, tag_name: str, value: object
     ) -> None:
