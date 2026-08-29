@@ -61,7 +61,7 @@
           <label>Version<input id="knowledge-version" maxlength="80" placeholder="e.g. 2.1"></label>
           <label>Machine<input id="knowledge-machine" maxlength="40" value="MACHINE-01"></label>
           <label>Alarm type<input id="knowledge-alarm" maxlength="100" placeholder="Optional"></label>
-          <fieldset><legend>Assistant access</legend><label><input type="checkbox" name="knowledge-role" value="admin" checked> Admin</label><label><input type="checkbox" name="knowledge-role" value="operator" checked> Operator</label><label><input type="checkbox" name="knowledge-role" value="viewer" checked> Viewer</label></fieldset>
+          <fieldset><legend>Assistant access</legend><label><input type="checkbox" name="knowledge-role" value="admin" checked> Admin</label><label><input type="checkbox" name="knowledge-role" value="operator" checked> Operator</label><label><input type="checkbox" name="knowledge-role" value="maintenance" checked> Maintenance</label><label><input type="checkbox" name="knowledge-role" value="engineer" checked> Engineer</label><label><input type="checkbox" name="knowledge-role" value="manager" checked> Manager</label><label><input type="checkbox" name="knowledge-role" value="viewer" checked> Viewer</label></fieldset>
           <button type="submit">Upload &amp; index</button><span id="knowledge-upload-status" role="status"></span><span id="knowledge-error" role="alert"></span>
         </form><details><summary>Supported formats</summary><p id="knowledge-formats">Loading format list…</p><small>Scanned/image-only files require OCR before upload. Password-protected and unsafe archives are rejected.</small></details></article>
         <article class="panel knowledge-search"><div class="panel-heading"><h2>Test retrieval</h2><span>Permission-aware</span></div><form id="knowledge-search-form"><input id="knowledge-query" type="search" minlength="2" maxlength="500" placeholder="How do I restart the machine safely?" required><button type="submit">Search</button></form><div id="knowledge-results" class="empty">Enter a question to preview retrieved passages</div></article>
@@ -127,7 +127,7 @@
     </section>
   </main>
   <aside class="assistant-panel" aria-label="AI Assistant">
-    <div class="assistant-heading"><div><p class="eyebrow">STAGE 2 · PHASE 8</p><h2>AI Assistant</h2></div><button id="assistant-clear" type="button" title="Start a new conversation">New chat</button></div>
+    <div class="assistant-heading"><div><p class="eyebrow">STAGE 2 · PHASE 9 · SCOPED SECURITY</p><h2>AI Assistant</h2></div><button id="assistant-clear" type="button" title="Start a new conversation">New chat</button></div>
     <div id="assistant-status" class="assistant-status">Checking model configuration…</div>
     <div id="assistant-context" class="assistant-context">Machine details · MACHINE-01</div>
     <div id="assistant-suggestions" class="assistant-suggestions" aria-label="Suggested questions"></div>
@@ -140,5 +140,5 @@
     </form>
   </aside></div>
   <div id="login-screen" class="login-screen" hidden><form id="login-form" class="login-card"><p class="eyebrow">SECURE DASHBOARD</p><h2>Sign in to MES</h2><p>Use your assigned administrator or operator account.</p><label>Username<input id="login-username" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><span id="login-error" role="alert"></span></form></div>
-  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=18.0"></script>
+  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=19.0"></script>
 </body></html>

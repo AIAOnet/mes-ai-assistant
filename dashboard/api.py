@@ -24,7 +24,7 @@ from assistant.knowledge import EmbeddingError, KnowledgeStore, KnowledgeValidat
 from assistant.ontology import MESOntology
 from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent, PageContext
 from assistant.service import AssistantNotConfigured, AssistantService
-from assistant.tools import MESReadTools, ToolNotFoundError, ToolValidationError
+from assistant.tools import AssistantAuthorizationError, MESReadTools, ToolNotFoundError, ToolValidationError
 from .controller import SimulationController
 from .auth import COOKIE_NAME, authenticate, configured_users, create_session, read_session, secure_cookie_enabled
 from .logging_config import configure_logging, correlation_id
@@ -347,7 +347,7 @@ async def knowledge_document(document_id: str, request: Request) -> dict:
 async def upload_knowledge_document(
     request: Request, file: UploadFile = File(...), title: str = Form(""),
     version: str = Form(""), machine_id: str = Form(""), alarm_type: str = Form(""),
-    roles: str = Form("admin,operator,viewer"),
+    roles: str = Form("admin,operator,maintenance,engineer,manager,viewer"),
 ) -> dict:
     try:
         data = await file.read(25 * 1024 * 1024 + 1)
@@ -435,6 +435,8 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
     except ProviderError as error:
         raise HTTPException(status_code=502, detail=str(error)) from error
     except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    except AssistantAuthorizationError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
     except ToolNotFoundError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error

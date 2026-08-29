@@ -26,10 +26,18 @@ class DashboardAuthenticationTests(unittest.TestCase):
         environment = {
             "MES_ADMIN_USERNAME": "admin-user", "MES_ADMIN_PASSWORD": "admin-password",
             "MES_OPERATOR_USERNAME": "line-user", "MES_OPERATOR_PASSWORD": "line-password",
+            "MES_MAINTENANCE_USERNAME": "maint-user", "MES_MAINTENANCE_PASSWORD": "maint-password",
+            "MES_ENGINEER_USERNAME": "eng-user", "MES_ENGINEER_PASSWORD": "eng-password",
+            "MES_MANAGER_USERNAME": "manager-user", "MES_MANAGER_PASSWORD": "manager-password",
+            "MES_VIEWER_USERNAME": "viewer-user", "MES_VIEWER_PASSWORD": "viewer-password",
         }
         with patch.dict(os.environ, environment, clear=True):
             self.assertEqual(authenticate("admin-user", "admin-password"), User("admin-user", "admin"))
             self.assertEqual(authenticate("line-user", "line-password"), User("line-user", "operator"))
+            self.assertEqual(authenticate("maint-user", "maint-password"), User("maint-user", "maintenance"))
+            self.assertEqual(authenticate("eng-user", "eng-password"), User("eng-user", "engineer"))
+            self.assertEqual(authenticate("manager-user", "manager-password"), User("manager-user", "manager"))
+            self.assertEqual(authenticate("viewer-user", "viewer-password"), User("viewer-user", "viewer"))
             self.assertIsNone(authenticate("line-user", "wrong"))
 
 

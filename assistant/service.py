@@ -35,7 +35,9 @@ class AssistantService:
 
     def status(self) -> dict:
         config = AssistantConfiguration.from_environment()
-        return {"configured": config.configured, "model": config.model or None, "phase": 8}
+        return {"configured": config.configured, "model": config.model or None, "phase": 9,
+                "security_scope": ["authentication", "roles", "permission_aware_retrieval",
+                                   "admin_configuration", "read_only_tools", "action_audit"]}
 
     def _provider(self, config: AssistantConfiguration) -> ModelProvider:
         return OpenAICompatibleProvider(config.endpoint, config.api_key, config.model, config.timeout_seconds)

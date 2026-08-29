@@ -26,7 +26,11 @@ class User:
 
 def configured_users() -> dict[str, tuple[str, str]]:
     users: dict[str, tuple[str, str]] = {}
-    for role, prefix in (("admin", "MES_ADMIN"), ("operator", "MES_OPERATOR")):
+    for role, prefix in (
+        ("admin", "MES_ADMIN"), ("operator", "MES_OPERATOR"),
+        ("maintenance", "MES_MAINTENANCE"), ("engineer", "MES_ENGINEER"),
+        ("manager", "MES_MANAGER"), ("viewer", "MES_VIEWER"),
+    ):
         username = os.getenv(f"{prefix}_USERNAME", "").strip()
         password = os.getenv(f"{prefix}_PASSWORD", "")
         if username and password:

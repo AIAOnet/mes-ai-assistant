@@ -33,6 +33,13 @@ class KnowledgeStoreTests(unittest.TestCase):
         self.assertIsNone(self.store.get(document["id"], "operator"))
         self.assertEqual(self.store.get(document["id"], "admin")["title"], "admin.txt")
 
+    def test_extended_manufacturing_roles_are_valid_document_permissions(self):
+        document=self.store.add("engineering.txt",b"Restricted engineering calibration procedure",
+                                roles=["engineer","maintenance","manager"])
+        self.assertIsNotNone(self.store.get(document["id"],"engineer"))
+        self.assertIsNotNone(self.store.get(document["id"],"maintenance"))
+        self.assertIsNone(self.store.get(document["id"],"operator"))
+
     def test_duplicate_and_unsupported_files_are_rejected(self):
         self.store.add("manual.txt", b"Approved machine operating manual")
         with self.assertRaises(KnowledgeValidationError):

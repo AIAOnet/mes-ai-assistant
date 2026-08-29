@@ -118,7 +118,8 @@ class KnowledgeStore:
     def add(self,filename,data,title="",version="",machine_id="",alarm_type="",roles=None):
         safe=Path(filename).name[:180]; text=extract_text(safe,data)
         if len(_terms(text))<3: raise KnowledgeValidationError("No useful searchable text was found in the file")
-        allowed=sorted(set(roles or ["admin","operator","viewer"])&{"admin","operator","viewer"})
+        valid_roles={"admin","operator","maintenance","engineer","manager","viewer"}
+        allowed=sorted(set(roles or valid_roles)&valid_roles)
         if not allowed: raise KnowledgeValidationError("At least one valid permission role is required")
         digest=hashlib.sha256(data).hexdigest(); doc_id=digest[:20]
         with self._lock:

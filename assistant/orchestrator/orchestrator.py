@@ -5,6 +5,7 @@ import re
 from assistant.orchestrator.intent import AssistantMode, Intent, QueryPlan
 from assistant.orchestrator.context import ConversationContextStore, PageContext
 from assistant.tools import MESReadTools, ToolResult
+from assistant.security import authorize_read_tool
 
 
 class AssistantOrchestrator:
@@ -135,6 +136,7 @@ class AssistantOrchestrator:
     def execute(self, plan: QueryPlan, role: str = "viewer") -> ToolResult | None:
         if not plan.tool:
             return None
+        authorize_read_tool(role, plan.tool)
         allowed = {
             "get_machine_status": self.tools.get_machine_status,
             "get_machine_alarms": self.tools.get_machine_alarms,
