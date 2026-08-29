@@ -229,7 +229,10 @@ async def enforce_dashboard_access(request: Request, call_next):
 
 @app.get("/", include_in_schema=False)
 async def dashboard() -> FileResponse:
-    return FileResponse(DIRECTORY / "index.html")
+    return FileResponse(
+        DIRECTORY / "index.html",
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 
 @app.get("/healthz", include_in_schema=False)
