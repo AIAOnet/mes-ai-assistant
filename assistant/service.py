@@ -1,0 +1,53 @@
+from __future__ import annotations
+import os
+from dataclasses import dataclass
+from assistant.memory import ConversationStore
+from assistant.models import ModelMessage, ModelProvider, OpenAICompatibleProvider
+from assistant.prompts.system import SYSTEM_PROMPT
+
+@dataclass(frozen=True)
+class AssistantConfiguration:
+    endpoint: str
+    api_key: str
+    model: str
+    timeout_seconds: float
+
+    @classmethod
+    def from_environment(cls) -> "AssistantConfiguration":
+        return cls(os.getenv("MES_AI_API_ENDPOINT", "").strip(),
+                   os.getenv("MES_AI_API_KEY", "").strip(),
+                   os.getenv("MES_AI_MODEL", "").strip(),
+                   float(os.getenv("MES_AI_TIMEOUT_SECONDS", "30")))
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.endpoint and self.api_key and self.model)
+
+class AssistantNotConfigured(RuntimeError):
+    pass
+
+class AssistantService:
+    def __init__(self, store: ConversationStore | None = None) -> None:
+        self.store = store or ConversationStore()
+
+    def status(self) -> dict:
+        config = AssistantConfiguration.from_environment()
+        return {"configured": config.configured, "model": config.model or None, "phase": 1}
+
+    def _provider(self, config: AssistantConfiguration) -> ModelProvider:
+        return OpenAICompatibleProvider(config.endpoint, config.api_key, config.model, config.timeout_seconds)
+
+    async def chat(self, key: str, message: str) -> tuple[str, str]:
+        config = AssistantConfiguration.from_environment()
+        if not config.configured:
+            raise AssistantNotConfigured("Configure MES_AI_API_ENDPOINT, MES_AI_API_KEY, and MES_AI_MODEL in .env")
+        history = self.store.get(key)
+        response = await self._provider(config).generate([
+            ModelMessage("system", SYSTEM_PROMPT), *history, ModelMessage("user", message)
+        ], temperature=0)
+        self.store.replace(key, [*history, ModelMessage("user", message),
+                                 ModelMessage("assistant", response.content)])
+        return response.content, response.model
+
+    def clear(self, key: str) -> None:
+        self.store.clear(key)

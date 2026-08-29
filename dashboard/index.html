@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=10.3">
+  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=11.0">
 </head>
 <body>
   <header><div><p class="eyebrow">MES LEARNING ENVIRONMENT</p><h1>MACHINE-01</h1></div><div class="header-actions"><div class="identity" id="identity" hidden><span id="identity-name">—</span><small id="identity-role">—</small><button id="logout">Sign out</button></div><div class="connection"><span id="connection-dot"></span><span id="connection">Connecting…</span></div></div></header>
-  <main>
+  <div class="dashboard-shell"><main>
     <nav class="tab-nav" aria-label="Dashboard views"><button class="tab-button selected" data-tab="overview-panel">Overview</button><button class="tab-button" data-tab="production-panel">Production</button><button class="tab-button" data-tab="communication-panel">Communication</button><button class="tab-button" data-tab="data-flow-panel">Data Flow</button><button class="tab-button" data-tab="maintenance-panel">Maintenance Tasks <span id="maintenance-tab-count">0</span></button><button class="tab-button" data-admin data-tab="security-panel">Security</button><button class="tab-button" data-admin data-tab="configuration-panel">Configuration</button><button class="tab-button" data-admin data-tab="diagnostics-panel">Diagnostics</button><button class="tab-button" data-admin data-tab="database-panel">Database</button></nav>
     <section id="overview-panel" class="tab-page selected">
     <section class="toolbar" aria-label="Simulation controls">
@@ -105,6 +105,17 @@
       </div>
     </section>
   </main>
+  <aside class="assistant-panel" aria-label="AI Assistant">
+    <div class="assistant-heading"><div><p class="eyebrow">STAGE 2 · PHASE 1</p><h2>AI Assistant</h2></div><button id="assistant-clear" type="button" title="Start a new conversation">New chat</button></div>
+    <div id="assistant-status" class="assistant-status">Checking model configuration…</div>
+    <div id="assistant-messages" class="assistant-messages" aria-live="polite"><div class="assistant-welcome"><strong>How can I help?</strong><p>Ask about MES and manufacturing concepts. Live factory data becomes available in Phase 2.</p></div></div>
+    <form id="assistant-form" class="assistant-form">
+      <label for="assistant-input">Ask a question</label>
+      <textarea id="assistant-input" maxlength="4000" rows="3" placeholder="What is OEE?" required></textarea>
+      <div><small>Enter to send · Shift+Enter for a new line</small><button type="submit">Send</button></div>
+      <span id="assistant-error" role="alert"></span>
+    </form>
+  </aside></div>
   <div id="login-screen" class="login-screen" hidden><form id="login-form" class="login-card"><p class="eyebrow">SECURE DASHBOARD</p><h2>Sign in to MES</h2><p>Use your assigned administrator or operator account.</p><label>Username<input id="login-username" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><span id="login-error" role="alert"></span></form></div>
-  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=10.3"></script>
+  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=11.0"></script>
 </body></html>

@@ -18,6 +18,8 @@ from typing import Literal
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
+from assistant.models import ProviderError
+from assistant.service import AssistantNotConfigured, AssistantService
 from .controller import SimulationController
 from .auth import COOKIE_NAME, authenticate, configured_users, create_session, read_session, secure_cookie_enabled
 from .logging_config import configure_logging, correlation_id
@@ -43,6 +45,7 @@ load_local_environment()
 configure_logging()
 LOGGER = logging.getLogger("dashboard.api")
 controller = SimulationController()
+assistant_service = AssistantService()
 
 
 class ThresholdSettings(BaseModel):
@@ -138,6 +141,17 @@ class SecurityConfiguration(BaseModel):
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=1, max_length=500)
+
+
+class AssistantChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+    conversation_id: str = Field(min_length=8, max_length=100, pattern=r"^[A-Za-z0-9_-]+$")
+
+
+def assistant_conversation_key(request: Request, conversation_id: str) -> str:
+    user = request.state.user
+    identity = user.username if user else "local"
+    return f"{identity}:{conversation_id}"
 
 
 @asynccontextmanager
@@ -258,6 +272,35 @@ async def logout() -> JSONResponse:
     response = JSONResponse({"logged_out": True})
     response.delete_cookie(COOKIE_NAME, httponly=True, samesite="strict")
     return response
+
+
+@app.get("/api/assistant/status")
+async def assistant_status() -> dict:
+    return assistant_service.status()
+
+
+@app.post("/api/assistant/chat")
+async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -> dict:
+    message = chat_request.message.strip()
+    if not message:
+        raise HTTPException(status_code=422, detail="Message is required")
+    try:
+        answer, model = await assistant_service.chat(
+            assistant_conversation_key(request, chat_request.conversation_id), message
+        )
+    except AssistantNotConfigured as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except ProviderError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    return {"answer": answer, "model": model, "conversation_id": chat_request.conversation_id}
+
+
+@app.delete("/api/assistant/conversations/{conversation_id}")
+async def clear_assistant_conversation(conversation_id: str, request: Request) -> dict:
+    if not conversation_id.replace("-", "").replace("_", "").isalnum() or len(conversation_id) > 100:
+        raise HTTPException(status_code=422, detail="Invalid conversation ID")
+    assistant_service.clear(assistant_conversation_key(request, conversation_id))
+    return {"cleared": True}
 
 
 @app.post("/api/system/restart")

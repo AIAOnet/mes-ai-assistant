@@ -1,0 +1,1 @@
+"""MES AI assistant package."""
