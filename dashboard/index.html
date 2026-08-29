@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=11.0"><link rel="stylesheet" href="/static/assistant-phase3.css?v=1.0">
+  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=11.0"><link rel="stylesheet" href="/static/assistant-phase3.css?v=1.0"><link rel="stylesheet" href="/static/rag.css?v=1.0">
 </head>
 <body>
   <header><div><p class="eyebrow">MES LEARNING ENVIRONMENT</p><h1>MACHINE-01</h1></div><div class="header-actions"><div class="identity" id="identity" hidden><span id="identity-name">—</span><small id="identity-role">—</small><button id="logout">Sign out</button></div><div class="connection"><span id="connection-dot"></span><span id="connection">Connecting…</span></div></div></header>
   <div class="dashboard-shell"><main>
-    <nav class="tab-nav" aria-label="Dashboard views"><button class="tab-button selected" data-tab="overview-panel">Overview</button><button class="tab-button" data-tab="production-panel">Production</button><button class="tab-button" data-tab="communication-panel">Communication</button><button class="tab-button" data-tab="data-flow-panel">Data Flow</button><button class="tab-button" data-tab="maintenance-panel">Maintenance Tasks <span id="maintenance-tab-count">0</span></button><button class="tab-button" data-admin data-tab="security-panel">Security</button><button class="tab-button" data-admin data-tab="configuration-panel">Configuration</button><button class="tab-button" data-admin data-tab="diagnostics-panel">Diagnostics</button><button class="tab-button" data-admin data-tab="database-panel">Database</button></nav>
+    <nav class="tab-nav" aria-label="Dashboard views"><button class="tab-button selected" data-tab="overview-panel">Overview</button><button class="tab-button" data-tab="production-panel">Production</button><button class="tab-button" data-tab="communication-panel">Communication</button><button class="tab-button" data-tab="data-flow-panel">Data Flow</button><button class="tab-button" data-tab="maintenance-panel">Maintenance Tasks <span id="maintenance-tab-count">0</span></button><button class="tab-button" data-admin data-tab="knowledge-panel">Knowledge / RAG</button><button class="tab-button" data-admin data-tab="security-panel">Security</button><button class="tab-button" data-admin data-tab="configuration-panel">Configuration</button><button class="tab-button" data-admin data-tab="diagnostics-panel">Diagnostics</button><button class="tab-button" data-admin data-tab="database-panel">Database</button></nav>
     <section id="overview-panel" class="tab-page selected">
     <section class="toolbar" aria-label="Simulation controls">
       <div><span class="toolbar-label">Simulation</span><button data-command="/api/simulation/start">Run</button><button data-command="/api/simulation/pause">Pause</button></div>
@@ -51,6 +51,22 @@
         <div class="lineage-node" data-flow-stage="event"><span>6</span><strong>Event</strong><small id="trace-event">No transition</small></div><i>→</i><div class="lineage-node" data-flow-stage="alarm"><span>7</span><strong>Alarm</strong><small id="trace-alarm">Not created</small></div><i>→</i><div class="lineage-node" data-flow-stage="task"><span>8</span><strong>Task</strong><small id="trace-task">Not created</small></div><i>→</i><div class="lineage-node" data-flow-stage="sql"><span>9</span><strong>SQL Server</strong><small id="trace-tables">—</small><code id="trace-sql-summary">—</code></div><i>→</i><div class="lineage-node" data-flow-stage="dashboard"><span>10</span><strong>Dashboard</strong><small id="trace-latency">— ms</small></div>
       </div></article>
       <section class="trace-layout"><article class="panel trace-detail"><div class="panel-heading"><h2>Selected trace</h2><span id="selected-trace-time">—</span></div><dl><dt>Trace ID</dt><dd id="selected-trace-id">—</dd><dt>Tag and value</dt><dd id="selected-trace-tag">—</dd><dt>Delivery</dt><dd id="selected-trace-delivery">—</dd><dt>Message body</dt><dd><pre id="selected-trace-payload">—</pre></dd><dt>MES input</dt><dd><pre id="selected-processor-input">—</pre></dd><dt>Decision</dt><dd id="selected-trace-decision">—</dd><dt>Outcome</dt><dd id="selected-trace-outcome">—</dd><dt>SQL records</dt><dd><pre id="selected-sql-records">—</pre></dd></dl></article><article class="panel trace-timeline-panel"><div class="panel-heading"><h2>Trace timeline</h2><span>Click a row to replay</span></div><div id="trace-timeline" class="empty">Waiting for MES values</div></article></section>
+    </section>
+    <section id="knowledge-panel" class="tab-page" hidden>
+      <div class="database-heading"><div><p class="eyebrow">STAGE 2 · PHASE 7</p><h2>Knowledge Base / RAG</h2><p>Upload approved MES procedures, manuals, and engineering references for grounded assistant answers.</p></div><span id="knowledge-count">0 documents</span></div>
+      <section class="knowledge-layout">
+        <article class="panel knowledge-upload"><div class="panel-heading"><h2>Upload and index</h2><span>25 MB per file</span></div><form id="knowledge-form">
+          <label>Files<input id="knowledge-files" type="file" multiple required></label>
+          <label>Document title (optional)<input id="knowledge-title" maxlength="200" placeholder="Uses filename when blank"></label>
+          <label>Version<input id="knowledge-version" maxlength="80" placeholder="e.g. 2.1"></label>
+          <label>Machine<input id="knowledge-machine" maxlength="40" value="MACHINE-01"></label>
+          <label>Alarm type<input id="knowledge-alarm" maxlength="100" placeholder="Optional"></label>
+          <fieldset><legend>Assistant access</legend><label><input type="checkbox" name="knowledge-role" value="admin" checked> Admin</label><label><input type="checkbox" name="knowledge-role" value="operator" checked> Operator</label><label><input type="checkbox" name="knowledge-role" value="viewer" checked> Viewer</label></fieldset>
+          <button type="submit">Upload &amp; index</button><span id="knowledge-upload-status" role="status"></span><span id="knowledge-error" role="alert"></span>
+        </form><details><summary>Supported formats</summary><p id="knowledge-formats">Loading format list…</p><small>Scanned/image-only files require OCR before upload. Password-protected and unsafe archives are rejected.</small></details></article>
+        <article class="panel knowledge-search"><div class="panel-heading"><h2>Test retrieval</h2><span>Permission-aware</span></div><form id="knowledge-search-form"><input id="knowledge-query" type="search" minlength="2" maxlength="500" placeholder="How do I restart the machine safely?" required><button type="submit">Search</button></form><div id="knowledge-results" class="empty">Enter a question to preview retrieved passages</div></article>
+      </section>
+      <article class="panel knowledge-library"><div class="panel-heading"><h2>Indexed documents</h2><button id="refresh-knowledge" type="button">Refresh</button></div><div id="knowledge-documents" class="empty">No documents indexed</div></article>
     </section>
     <section id="security-panel" class="tab-page" hidden>
       <div class="database-heading"><div><p class="eyebrow">PHASE 9 · SECURITY</p><h2>Security Configuration</h2><p>Prepare dashboard access, encrypted transports, certificates, and auditing</p></div></div>
@@ -106,7 +122,7 @@
     </section>
   </main>
   <aside class="assistant-panel" aria-label="AI Assistant">
-    <div class="assistant-heading"><div><p class="eyebrow">STAGE 2 · PHASE 6</p><h2>AI Assistant</h2></div><button id="assistant-clear" type="button" title="Start a new conversation">New chat</button></div>
+    <div class="assistant-heading"><div><p class="eyebrow">STAGE 2 · PHASE 7</p><h2>AI Assistant</h2></div><button id="assistant-clear" type="button" title="Start a new conversation">New chat</button></div>
     <div id="assistant-status" class="assistant-status">Checking model configuration…</div>
     <div id="assistant-context" class="assistant-context">Machine details · MACHINE-01</div>
     <div id="assistant-suggestions" class="assistant-suggestions" aria-label="Suggested questions"></div>
@@ -119,5 +135,5 @@
     </form>
   </aside></div>
   <div id="login-screen" class="login-screen" hidden><form id="login-form" class="login-card"><p class="eyebrow">SECURE DASHBOARD</p><h2>Sign in to MES</h2><p>Use your assigned administrator or operator account.</p><label>Username<input id="login-username" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><span id="login-error" role="alert"></span></form></div>
-  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=13.0"></script>
+  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=14.0"></script>
 </body></html>

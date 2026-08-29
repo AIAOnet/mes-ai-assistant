@@ -72,6 +72,7 @@ services:
       - ./certs/opc:/app/certs/opc:ro
       - ./certs/mqtt:/app/certs/mqtt:ro
       - ./config:/app/config
+      - mes-rag-data:/app/rag_data
     depends_on:
       database-init:
         condition: service_completed_successfully
@@ -88,3 +89,4 @@ services:
 
 volumes:
   mes-sql-data:
+  mes-rag-data:

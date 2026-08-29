@@ -24,6 +24,9 @@ class AssistantOrchestrator:
         context_data = context.as_dict()
         machine_id = self._machine_id(text) or context.machine_id
         period = self._period(text)
+        if re.search(r"\b(procedure|manual|sop|instruction|instructions|safety|troubleshoot|restart|repair|document|documentation|knowledge base)\b", text):
+            return QueryPlan(AssistantMode.DATA, Intent.KNOWLEDGE_RETRIEVAL, "search_knowledge",
+                             {"query": question, "machine_id": machine_id or context.machine_id or ""}, context_data)
         if context.alarm_id and (
             re.search(r"\b(this|selected|current) alarm\b", text)
             or (context.page == "alarm_details" and re.search(r"\b(it|this|what happened|why|before|status|explain)\b", text))
@@ -118,7 +121,7 @@ class AssistantOrchestrator:
             return QueryPlan(AssistantMode.DATA, Intent.UNSUPPORTED_OPERATIONAL, context=context_data)
         return QueryPlan(AssistantMode.ASK, Intent.GENERAL_KNOWLEDGE, context=context_data)
 
-    def execute(self, plan: QueryPlan) -> ToolResult | None:
+    def execute(self, plan: QueryPlan, role: str = "viewer") -> ToolResult | None:
         if not plan.tool:
             return None
         allowed = {
@@ -138,8 +141,11 @@ class AssistantOrchestrator:
             "compare_oee": self.tools.compare_oee,
             "investigate_machine_stop": self.tools.investigate_machine_stop,
             "investigate_alarm": self.tools.investigate_alarm,
+            "search_knowledge": self.tools.search_knowledge,
         }
-        return allowed[plan.tool](**plan.arguments)
+        arguments = dict(plan.arguments)
+        if plan.tool == "search_knowledge": arguments["role"] = role
+        return allowed[plan.tool](**arguments)
 
     def clear_context(self, conversation_key: str) -> None:
         self.contexts.clear(conversation_key)

@@ -38,8 +38,21 @@ class MESReadTools:
         "status": ("Machine01.Status", None),
     }
 
-    def __init__(self, controller) -> None:
+    def __init__(self, controller, knowledge_store=None) -> None:
         self.controller = controller
+        self.knowledge_store = knowledge_store
+
+    def search_knowledge(self, query: str, role: str = "viewer", machine_id: str = "") -> ToolResult:
+        if self.knowledge_store is None:
+            raise ToolNotFoundError("Knowledge base is not configured")
+        results = self.knowledge_store.search(query, role, 5, machine_id)
+        if not results:
+            raise ToolNotFoundError("No approved knowledge documents matched this question")
+        sources = [{"type": "document_section", "id": f"{item['document']['id']}:{item['chunk']}",
+                    "uri": f"/api/knowledge/documents/{item['document']['id']}",
+                    "title": item["document"]["title"], "version": item["document"]["version"]}
+                   for item in results]
+        return ToolResult("search_knowledge", {"query": query, "matches": results}, sources)
 
     def _machine(self, machine_id: str) -> str:
         normalized = machine_id.strip().upper()

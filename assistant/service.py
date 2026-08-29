@@ -35,7 +35,7 @@ class AssistantService:
 
     def status(self) -> dict:
         config = AssistantConfiguration.from_environment()
-        return {"configured": config.configured, "model": config.model or None, "phase": 6}
+        return {"configured": config.configured, "model": config.model or None, "phase": 7}
 
     def _provider(self, config: AssistantConfiguration) -> ModelProvider:
         return OpenAICompatibleProvider(config.endpoint, config.api_key, config.model, config.timeout_seconds)
@@ -63,7 +63,8 @@ class AssistantService:
             ModelMessage("system", DATA_PROMPT), *history, ModelMessage("user", user_content)
         ], temperature=0)
         sources = tool_context.get("sources", [])
-        source_lines = [f"- {item['type']}: {item['id']}" for item in sources]
+        source_lines = [f"- {item.get('title') or item['type']}: {item['id']}" +
+                        (f" (version {item['version']})" if item.get('version') else "") for item in sources]
         answer = re.sub(
             r"\n\s*Sources\s*\n.*$", "", response.content,
             flags=re.IGNORECASE | re.DOTALL,

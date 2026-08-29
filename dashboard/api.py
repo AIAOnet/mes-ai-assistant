@@ -7,18 +7,20 @@ import os
 import subprocess
 import sys
 import logging
+import re
 import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, File, Form, Query, UploadFile
 from pydantic import BaseModel, Field, model_validator
 from typing import Literal
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from assistant.models import ProviderError
+from assistant.knowledge import KnowledgeStore, KnowledgeValidationError, SUPPORTED_EXTENSIONS
 from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent, PageContext
 from assistant.service import AssistantNotConfigured, AssistantService
 from assistant.tools import MESReadTools, ToolNotFoundError, ToolValidationError
@@ -48,7 +50,8 @@ configure_logging()
 LOGGER = logging.getLogger("dashboard.api")
 controller = SimulationController()
 assistant_service = AssistantService()
-mes_tools = MESReadTools(controller)
+knowledge_store = KnowledgeStore(os.getenv("MES_RAG_DATA_PATH", "rag_data"))
+mes_tools = MESReadTools(controller, knowledge_store)
 assistant_orchestrator = AssistantOrchestrator(mes_tools)
 
 
@@ -150,7 +153,7 @@ class LoginRequest(BaseModel):
 class AssistantPageContext(BaseModel):
     page: Literal[
         "machine_details", "production", "communication", "data_flow", "maintenance",
-        "security", "configuration", "diagnostics", "database", "alarm_details",
+        "security", "configuration", "diagnostics", "database", "knowledge", "alarm_details",
     ]
     machine_id: str | None = Field(default=None, pattern=r"^MACHINE-\d{2}$")
     alarm_id: str | None = Field(default=None, min_length=3, max_length=66)
@@ -207,7 +210,7 @@ async def enforce_dashboard_access(request: Request, call_next):
     if authentication_enabled() and path.startswith("/api/") and not exempt:
         if user is None:
             access_response = JSONResponse({"detail": "Authentication required"}, status_code=401)
-        admin_only = path in {"/api/config", "/api/security", "/api/database", "/api/diagnostics", "/api/monitoring", "/api/system/restart"}
+        admin_only = path in {"/api/config", "/api/security", "/api/database", "/api/diagnostics", "/api/monitoring", "/api/system/restart"} or (path.startswith("/api/knowledge/documents") and request.method in {"POST", "DELETE"})
         if access_response is None and admin_only and user.role != "admin":
             access_response = JSONResponse({"detail": "Administrator role required"}, status_code=403)
     if access_response is not None:
@@ -299,6 +302,56 @@ async def assistant_status() -> dict:
     return assistant_service.status()
 
 
+def request_role(request: Request) -> str:
+    return request.state.user.role if request.state.user else "admin"
+
+
+@app.get("/api/knowledge/formats")
+async def knowledge_formats() -> dict:
+    return {"extensions": SUPPORTED_EXTENSIONS, "max_upload_mb": 25}
+
+
+@app.get("/api/knowledge/documents")
+async def knowledge_documents(request: Request) -> dict:
+    documents = knowledge_store.list(request_role(request))
+    return {"documents": documents, "count": len(documents)}
+
+
+@app.post("/api/knowledge/documents", status_code=201)
+async def upload_knowledge_document(
+    request: Request, file: UploadFile = File(...), title: str = Form(""),
+    version: str = Form(""), machine_id: str = Form(""), alarm_type: str = Form(""),
+    roles: str = Form("admin,operator,viewer"),
+) -> dict:
+    try:
+        data = await file.read(25 * 1024 * 1024 + 1)
+        document = knowledge_store.add(file.filename or "upload", data, title, version,
+                                       machine_id, alarm_type,
+                                       [item.strip() for item in roles.split(",") if item.strip()])
+        return {"document": document, "indexed": True}
+    except KnowledgeValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    finally:
+        await file.close()
+
+
+@app.delete("/api/knowledge/documents/{document_id}")
+async def delete_knowledge_document(document_id: str) -> dict:
+    if not re.fullmatch(r"[a-f0-9]{20}", document_id):
+        raise HTTPException(status_code=422, detail="Invalid document ID")
+    if not knowledge_store.delete(document_id):
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"deleted": True, "id": document_id}
+
+
+@app.get("/api/knowledge/search")
+async def search_knowledge(request: Request, q: str = Query(min_length=2, max_length=500),
+                           limit: int = Query(5, ge=1, le=10), machine_id: str = "",
+                           alarm_type: str = "") -> dict:
+    results = knowledge_store.search(q, request_role(request), limit, machine_id, alarm_type)
+    return {"query": q, "results": results, "count": len(results)}
+
+
 @app.post("/api/assistant/chat")
 async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -> dict:
     message = chat_request.message.strip()
@@ -317,7 +370,7 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
             model = None
             tool_result = None
         elif plan.mode == AssistantMode.DATA:
-            tool_result = assistant_orchestrator.execute(plan)
+            tool_result = assistant_orchestrator.execute(plan, role=request_role(request))
             answer, model = await assistant_service.grounded_chat(
                 conversation_key, message, plan.intent.value, tool_result.as_context()
             )
