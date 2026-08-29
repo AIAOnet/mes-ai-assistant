@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=11.0">
+  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=11.0"><link rel="stylesheet" href="/static/assistant-phase3.css?v=1.0">
 </head>
 <body>
   <header><div><p class="eyebrow">MES LEARNING ENVIRONMENT</p><h1>MACHINE-01</h1></div><div class="header-actions"><div class="identity" id="identity" hidden><span id="identity-name">—</span><small id="identity-role">—</small><button id="logout">Sign out</button></div><div class="connection"><span id="connection-dot"></span><span id="connection">Connecting…</span></div></div></header>
@@ -106,9 +106,11 @@
     </section>
   </main>
   <aside class="assistant-panel" aria-label="AI Assistant">
-    <div class="assistant-heading"><div><p class="eyebrow">STAGE 2 · PHASE 1</p><h2>AI Assistant</h2></div><button id="assistant-clear" type="button" title="Start a new conversation">New chat</button></div>
+    <div class="assistant-heading"><div><p class="eyebrow">STAGE 2 · PHASE 3</p><h2>AI Assistant</h2></div><button id="assistant-clear" type="button" title="Start a new conversation">New chat</button></div>
     <div id="assistant-status" class="assistant-status">Checking model configuration…</div>
-    <div id="assistant-messages" class="assistant-messages" aria-live="polite"><div class="assistant-welcome"><strong>How can I help?</strong><p>Ask about MES and manufacturing concepts. Live factory data becomes available in Phase 2.</p></div></div>
+    <div id="assistant-context" class="assistant-context">Machine details · MACHINE-01</div>
+    <div id="assistant-suggestions" class="assistant-suggestions" aria-label="Suggested questions"></div>
+    <div id="assistant-messages" class="assistant-messages" aria-live="polite"><div class="assistant-welcome"><strong>How can I help?</strong><p>Ask about the selected MES page, alarm, or production order.</p></div></div>
     <form id="assistant-form" class="assistant-form">
       <label for="assistant-input">Ask a question</label>
       <textarea id="assistant-input" maxlength="4000" rows="3" placeholder="What is OEE?" required></textarea>
@@ -117,5 +119,5 @@
     </form>
   </aside></div>
   <div id="login-screen" class="login-screen" hidden><form id="login-form" class="login-card"><p class="eyebrow">SECURE DASHBOARD</p><h2>Sign in to MES</h2><p>Use your assigned administrator or operator account.</p><label>Username<input id="login-username" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><span id="login-error" role="alert"></span></form></div>
-  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=12.0"></script>
+  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=13.0"></script>
 </body></html>

@@ -23,3 +23,4 @@ class QueryPlan:
     intent: Intent
     tool: str | None = None
     arguments: dict = field(default_factory=dict)
+    context: dict = field(default_factory=dict)

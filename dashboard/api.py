@@ -19,9 +19,9 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from assistant.models import ProviderError
-from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent
+from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent, PageContext
 from assistant.service import AssistantNotConfigured, AssistantService
-from assistant.tools import MESReadTools, ToolValidationError
+from assistant.tools import MESReadTools, ToolNotFoundError, ToolValidationError
 from .controller import SimulationController
 from .auth import COOKIE_NAME, authenticate, configured_users, create_session, read_session, secure_cookie_enabled
 from .logging_config import configure_logging, correlation_id
@@ -147,9 +147,22 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=500)
 
 
+class AssistantPageContext(BaseModel):
+    page: Literal[
+        "machine_details", "production", "communication", "data_flow", "maintenance",
+        "security", "configuration", "diagnostics", "database", "alarm_details",
+    ]
+    machine_id: str | None = Field(default=None, pattern=r"^MACHINE-\d{2}$")
+    alarm_id: str | None = Field(default=None, min_length=3, max_length=66)
+    production_order_id: str | None = Field(
+        default=None, min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_-]+$"
+    )
+
+
 class AssistantChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     conversation_id: str = Field(min_length=8, max_length=100, pattern=r"^[A-Za-z0-9_-]+$")
+    context: AssistantPageContext | None = None
 
 
 def assistant_conversation_key(request: Request, conversation_id: str) -> str:
@@ -293,7 +306,8 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
         raise HTTPException(status_code=422, detail="Message is required")
     try:
         conversation_key = assistant_conversation_key(request, chat_request.conversation_id)
-        plan = assistant_orchestrator.plan(message)
+        page_context = PageContext(**chat_request.context.model_dump()) if chat_request.context else None
+        plan = assistant_orchestrator.plan(message, page_context, conversation_key)
         if plan.intent == Intent.UNSUPPORTED_OPERATIONAL:
             answer = (
                 "That operational question requires historical or investigation tools that are "
@@ -316,6 +330,8 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
         raise HTTPException(status_code=502, detail=str(error)) from error
     except ToolValidationError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
+    except ToolNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
     return {
         "answer": answer,
         "model": model,
@@ -324,6 +340,7 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
         "intent": plan.intent.value,
         "tool": plan.tool,
         "tool_arguments": plan.arguments,
+        "resolved_context": plan.context,
         "sources": tool_result.sources if tool_result else [],
     }
 
@@ -332,7 +349,9 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
 async def clear_assistant_conversation(conversation_id: str, request: Request) -> dict:
     if not conversation_id.replace("-", "").replace("_", "").isalnum() or len(conversation_id) > 100:
         raise HTTPException(status_code=422, detail="Invalid conversation ID")
-    assistant_service.clear(assistant_conversation_key(request, conversation_id))
+    conversation_key = assistant_conversation_key(request, conversation_id)
+    assistant_service.clear(conversation_key)
+    assistant_orchestrator.clear_context(conversation_key)
     return {"cleared": True}
 
 

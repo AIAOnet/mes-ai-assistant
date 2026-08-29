@@ -1,8 +1,8 @@
 import unittest
 from datetime import datetime, timezone
 
-from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent
-from assistant.tools import MESReadTools, ToolValidationError
+from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent, PageContext
+from assistant.tools import MESReadTools, ToolNotFoundError, ToolValidationError
 
 
 class FakeController:
@@ -51,6 +51,20 @@ class MESReadToolTests(unittest.TestCase):
         self.assertEqual(self.tools.get_production_status("MACHINE-01").data["active_order_id"], "PO-1")
         self.assertEqual(self.tools.get_oee("MACHINE-01").data["oee"], 83.79)
 
+    def test_alarm_details_are_selected_by_verified_id(self):
+        result = self.tools.get_alarm_details("A-103")
+        self.assertEqual(result.data["alarm"]["status"], "ACTIVE")
+        self.assertEqual(result.sources[0]["uri"], "/api/mes/alarms/A-103")
+
+    def test_unknown_alarm_is_not_found(self):
+        with self.assertRaises(ToolNotFoundError):
+            self.tools.get_alarm_details("A-999")
+
+    def test_production_status_can_be_scoped_to_selected_order(self):
+        result = self.tools.get_production_status("MACHINE-01", "PO-1")
+        self.assertEqual(result.data["selected_order_id"], "PO-1")
+        self.assertEqual(len(result.data["orders"]), 1)
+
 
 class OrchestratorTests(unittest.TestCase):
     def setUp(self):
@@ -82,6 +96,45 @@ class OrchestratorTests(unittest.TestCase):
     def test_phase_three_question_is_not_guessed(self):
         plan = self.orchestrator.plan("Why did Machine 01 stop?")
         self.assertEqual(plan.intent, Intent.UNSUPPORTED_OPERATIONAL)
+
+    def test_machine_page_context_resolves_implicit_pressure_question(self):
+        plan = self.orchestrator.plan(
+            "What is its pressure?", PageContext("machine_details", "MACHINE-01"), "chat-1"
+        )
+        self.assertEqual(plan.tool, "get_machine_status")
+        self.assertEqual(plan.context["machine_id"], "MACHINE-01")
+
+    def test_selected_alarm_resolves_follow_up_reference(self):
+        plan = self.orchestrator.plan(
+            "What is this alarm?",
+            PageContext("alarm_details", "MACHINE-01", alarm_id="A-103"),
+            "chat-2",
+        )
+        self.assertEqual(plan.tool, "get_alarm_details")
+        self.assertEqual(plan.arguments, {"alarm_id": "A-103"})
+        follow_up = self.orchestrator.plan("Is it active?", conversation_key="chat-2")
+        self.assertEqual(follow_up.tool, "get_alarm_details")
+
+    def test_selected_order_scopes_production_tool(self):
+        plan = self.orchestrator.plan(
+            "Show production status",
+            PageContext("production", "MACHINE-01", production_order_id="PO-1"),
+            "chat-3",
+        )
+        self.assertEqual(plan.arguments["production_order_id"], "PO-1")
+
+    def test_changing_page_clears_stale_entity_reference(self):
+        self.orchestrator.plan(
+            "What is this alarm?",
+            PageContext("alarm_details", "MACHINE-01", alarm_id="A-103"),
+            "chat-4",
+        )
+        plan = self.orchestrator.plan(
+            "What is the current pressure?",
+            PageContext("machine_details", "MACHINE-01"),
+            "chat-4",
+        )
+        self.assertNotIn("alarm_id", plan.context)
 
 
 if __name__ == "__main__":

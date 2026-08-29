@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import re
 from typing import Any
 
 
 class ToolValidationError(ValueError):
     """Reject tool parameters outside the MES allow-list."""
+
+
+class ToolNotFoundError(LookupError):
+    """The requested allow-listed MES entity does not exist."""
 
 
 @dataclass(frozen=True)
@@ -79,9 +84,32 @@ class MESReadTools:
                         "uri": f"/api/mes/machines/{machine_id}/alarms"}]
         return ToolResult("get_machine_alarms", data, sources)
 
-    def get_production_status(self, machine_id: str) -> ToolResult:
+    def get_alarm_details(self, alarm_id: str) -> ToolResult:
+        if not re.fullmatch(r"A-[A-Za-z0-9_-]{1,64}", alarm_id):
+            raise ToolValidationError("Invalid alarm ID")
+        alarm = next(
+            (item for item in self.controller.read_machine_alarms("MACHINE-01")
+             if item["id"] == alarm_id),
+            None,
+        )
+        if alarm is None:
+            raise ToolNotFoundError(f"Alarm not found: {alarm_id}")
+        return ToolResult("get_alarm_details", {
+            "alarm": alarm, "observed_at": datetime.now(timezone.utc).isoformat(),
+        }, [{"type": "alarm", "id": alarm_id, "uri": f"/api/mes/alarms/{alarm_id}"}])
+
+    def get_production_status(
+        self, machine_id: str, production_order_id: str | None = None
+    ) -> ToolResult:
         machine_id = self._machine(machine_id)
         status = self.controller.read_production_status(machine_id)
+        if production_order_id is not None:
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", production_order_id):
+                raise ToolValidationError("Invalid production order ID")
+            orders = [item for item in status["orders"] if item["id"] == production_order_id]
+            if not orders:
+                raise ToolNotFoundError(f"Production order not found: {production_order_id}")
+            status = {**status, "orders": orders, "selected_order_id": production_order_id}
         sources = [{"type": "production_order", "id": item["id"],
                     "uri": f"/api/mes/production-orders/{item['id']}"}
                    for item in status["orders"]]

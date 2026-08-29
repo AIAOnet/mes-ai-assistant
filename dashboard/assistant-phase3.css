@@ -1,0 +1,5 @@
+.assistant-panel{grid-template-rows:auto auto auto auto minmax(0,1fr) auto}
+.assistant-context{padding:8px 18px 4px;color:#b9c9dc;font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:capitalize}
+.assistant-suggestions{display:flex;gap:7px;padding:7px 14px 10px;overflow-x:auto;border-bottom:1px solid #263a57}
+.assistant-suggestions button{flex:0 0 auto;min-height:29px;padding:4px 9px;border-color:#365477;background:#172a44;color:#b9c9dc;font-size:.7rem}
+.ask-ai{border-color:#4d85bd;background:#163a5f;color:#dbeafe}
