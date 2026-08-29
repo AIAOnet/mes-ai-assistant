@@ -33,6 +33,10 @@ class AssistantOrchestrator:
         ) and re.search(
             r"\b(what|which|how|could|should|involved|inspect|check|safe|excessive)\b", text
         ))
+        knowledge_guidance = knowledge_guidance or bool(
+            re.search(r"\b(high[-_ ]pressure|high[-_ ]temperature|alarm)\b", text)
+            and re.search(r"\b(what should i do|procedure|instruction|safe|inspect|check)\b", text)
+        )
         if context.page == "knowledge" or knowledge_guidance or re.search(
             r"\b(procedure|manual|sop|instruction|instructions|safety|troubleshoot|restart|repair|document|documentation|knowledge base)\b",
             text,

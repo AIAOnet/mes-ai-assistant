@@ -7,6 +7,7 @@ from assistant.memory import ConversationStore
 from assistant.models import ModelMessage, ModelProvider, OpenAICompatibleProvider
 from assistant.prompts.system import SYSTEM_PROMPT
 from assistant.prompts.data import DATA_PROMPT
+from assistant.evaluation import GroundingValidator
 
 @dataclass(frozen=True)
 class AssistantConfiguration:
@@ -35,9 +36,11 @@ class AssistantService:
 
     def status(self) -> dict:
         config = AssistantConfiguration.from_environment()
-        return {"configured": config.configured, "model": config.model or None, "phase": 9,
+        return {"configured": config.configured, "model": config.model or None, "phase": 10,
                 "security_scope": ["authentication", "roles", "permission_aware_retrieval",
-                                   "admin_configuration", "read_only_tools", "action_audit"]}
+                                   "admin_configuration", "read_only_tools", "action_audit"],
+                "grounding": ["response_validation", "source_verification", "acceptance_tests",
+                              "accuracy_evaluation"]}
 
     def _provider(self, config: AssistantConfiguration) -> ModelProvider:
         return OpenAICompatibleProvider(config.endpoint, config.api_key, config.model, config.timeout_seconds)
@@ -54,7 +57,9 @@ class AssistantService:
                                  ModelMessage("assistant", response.content)])
         return response.content, response.model
 
-    async def grounded_chat(self, key: str, question: str, intent: str, tool_context: dict) -> tuple[str, str]:
+    async def grounded_chat(
+        self, key: str, question: str, intent: str, tool_context: dict
+    ) -> tuple[str, str, dict]:
         config = AssistantConfiguration.from_environment()
         if not config.configured:
             raise AssistantNotConfigured("Configure MES_AI_API_ENDPOINT, MES_AI_API_KEY, and MES_AI_MODEL in .env")
@@ -64,14 +69,16 @@ class AssistantService:
         response = await self._provider(config).generate([
             ModelMessage("system", DATA_PROMPT), *history, ModelMessage("user", user_content)
         ], temperature=0)
-        sources = tool_context.get("sources", [])
         answer = re.sub(
-            r"\n\s*Sources\s*\n.*$", "", response.content,
+            r"\n\s*(?:#{1,6}\s*)?Sources\s*:?\s*\n.*$", "", response.content,
             flags=re.IGNORECASE | re.DOTALL,
         ).strip()
+        if not answer:
+            answer = "The model returned no answer. The verified MES evidence is available in the references."
+        validation = GroundingValidator.validate(answer, tool_context)
         self.store.replace(key, [*history, ModelMessage("user", question),
                                  ModelMessage("assistant", answer)])
-        return answer, response.model
+        return answer, response.model, validation.as_dict()
 
     def remember_exchange(self, key: str, question: str, answer: str) -> None:
         history = self.store.get(key)

@@ -26,8 +26,9 @@ class AssistantConfigurationTests(unittest.TestCase):
             status = AssistantService().status()
         self.assertEqual(status["configured"], True)
         self.assertEqual(status["model"], "factory-model")
-        self.assertEqual(status["phase"], 9)
+        self.assertEqual(status["phase"], 10)
         self.assertIn("read_only_tools", status["security_scope"])
+        self.assertIn("source_verification", status["grounding"])
         self.assertNotIn("top-secret", json.dumps(status))
         self.assertNotIn("models.example", json.dumps(status))
 
@@ -73,13 +74,15 @@ class AssistantServiceTests(unittest.IsolatedAsyncioTestCase):
                    "sources": [{"type": "machine_status", "id": "MACHINE-01",
                                 "uri": "/api/mes/machines/MACHINE-01/status"}]}
         with patch.dict(os.environ, environment, clear=True), patch.object(service, "_provider", return_value=provider):
-            answer, _ = await service.grounded_chat(
+            answer, _, validation = await service.grounded_chat(
                 "alice:one", "What is the pressure?", "CURRENT_MACHINE_STATUS", context
             )
         self.assertEqual(answer, "Pressure is 72 bar.")
         self.assertNotIn("invented", answer)
         self.assertNotIn("Sources", answer)
         self.assertIn('"pressure":72', provider.calls[0][0][-1].content)
+        self.assertEqual(validation["status"], "VERIFIED")
+        self.assertEqual(validation["verified_sources"], context["sources"])
 
 
 class OpenAICompatibleProviderTests(unittest.TestCase):

@@ -20,6 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from assistant.models import ProviderError
+from assistant.evaluation import evaluate_routing
 from assistant.knowledge import EmbeddingError, KnowledgeStore, KnowledgeValidationError, SUPPORTED_EXTENSIONS
 from assistant.ontology import MESOntology
 from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent, PageContext
@@ -212,7 +213,7 @@ async def enforce_dashboard_access(request: Request, call_next):
     if authentication_enabled() and path.startswith("/api/") and not exempt:
         if user is None:
             access_response = JSONResponse({"detail": "Authentication required"}, status_code=401)
-        admin_only = path in {"/api/config", "/api/security", "/api/database", "/api/diagnostics", "/api/monitoring", "/api/system/restart", "/api/knowledge/reindex"} or (path.startswith("/api/knowledge/documents") and request.method in {"POST", "DELETE"})
+        admin_only = path in {"/api/config", "/api/security", "/api/database", "/api/diagnostics", "/api/monitoring", "/api/system/restart", "/api/knowledge/reindex", "/api/assistant/evaluation"} or (path.startswith("/api/knowledge/documents") and request.method in {"POST", "DELETE"})
         if access_response is None and admin_only and user.role != "admin":
             access_response = JSONResponse({"detail": "Administrator role required"}, status_code=403)
     if access_response is not None:
@@ -302,6 +303,11 @@ async def logout() -> JSONResponse:
 @app.get("/api/assistant/status")
 async def assistant_status() -> dict:
     return assistant_service.status()
+
+
+@app.get("/api/assistant/evaluation")
+async def assistant_evaluation() -> dict:
+    return evaluate_routing(assistant_orchestrator)
 
 
 def request_role(request: Request) -> str:
@@ -417,6 +423,8 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
             assistant_service.remember_exchange(conversation_key, message, answer)
             model = None
             tool_result = None
+            validation = {"status": "NOT_APPLICABLE", "score": None, "checks": {},
+                          "warnings": [], "verified_sources": []}
         elif plan.mode == AssistantMode.DATA:
             if plan.tool in {"search_knowledge", "search_ontology"}:
                 tool_result = await asyncio.to_thread(
@@ -424,12 +432,14 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
                 )
             else:
                 tool_result = assistant_orchestrator.execute(plan, role=request_role(request))
-            answer, model = await assistant_service.grounded_chat(
+            answer, model, validation = await assistant_service.grounded_chat(
                 conversation_key, message, plan.intent.value, tool_result.as_context()
             )
         else:
             tool_result = None
             answer, model = await assistant_service.chat(conversation_key, message)
+            validation = {"status": "NOT_APPLICABLE", "score": None, "checks": {},
+                          "warnings": [], "verified_sources": []}
     except AssistantNotConfigured as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except ProviderError as error:
@@ -449,7 +459,8 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
         "tool": plan.tool,
         "tool_arguments": plan.arguments,
         "resolved_context": plan.context,
-        "sources": tool_result.sources if tool_result else [],
+        "sources": validation["verified_sources"],
+        "validation": {key: value for key, value in validation.items() if key != "verified_sources"},
     }
 
 
