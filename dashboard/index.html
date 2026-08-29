@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=14.0"><link rel="stylesheet" href="/static/assistant-phase3.css?v=2.0"><link rel="stylesheet" href="/static/rag.css?v=2.0">
+  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=14.0"><link rel="stylesheet" href="/static/assistant-phase3.css?v=2.0"><link rel="stylesheet" href="/static/rag.css?v=3.0">
 </head>
 <body>
   <header><div><p class="eyebrow">MES LEARNING ENVIRONMENT</p><h1>MACHINE-01</h1></div><div class="header-actions"><div class="identity" id="identity" hidden><span id="identity-name">—</span><small id="identity-role">—</small><button id="logout">Sign out</button></div><div class="connection"><span id="connection-dot"></span><span id="connection">Connecting…</span></div></div></header>
@@ -71,6 +71,7 @@
     <section id="ontology-panel" class="tab-page" hidden>
       <div class="database-heading"><div><p class="eyebrow">HYBRID GRAPH SEARCH</p><h2>MES Ontology Explorer</h2><p>Traverse explicit relationships across machines, sensors, alarms, procedures, orders, and maintenance work.</p></div><div class="ontology-summary"><strong id="ontology-search-mode">Checking search…</strong><span id="ontology-node-count">0 nodes</span><span id="ontology-edge-count">0 relationships</span></div></div>
       <article class="panel ontology-search"><form id="ontology-search-form"><label for="ontology-query">Relationship question</label><input id="ontology-query" type="search" minlength="2" maxlength="500" value="everything related to the pressure problem on Machine 01" required><label for="ontology-depth">Depth</label><select id="ontology-depth"><option value="1">1 hop</option><option value="2" selected>2 hops</option><option value="3">3 hops</option><option value="4">4 hops</option></select><button type="submit">Traverse graph</button></form><span id="ontology-error" role="alert"></span></article>
+      <article class="panel ontology-triple-editor" data-admin><div class="panel-heading"><div><h2>Add manual triple</h2><p>Connect two ontology entities with a directed relationship.</p></div><span id="ontology-triple-count">0 manual triples</span></div><form id="ontology-triple-form"><label>Subject<input id="ontology-subject" maxlength="100" placeholder="MACHINE-01" required></label><label>Predicate<input id="ontology-predicate" maxlength="80" placeholder="HAS_COMPONENT" required></label><label>Object<input id="ontology-object" maxlength="100" placeholder="HYDRAULIC-PUMP-01" required></label><button type="submit">Add triple</button><span id="ontology-triple-status" role="status"></span><span id="ontology-triple-error" role="alert"></span></form><div id="ontology-triples" class="ontology-triples empty">No manual triples</div></article>
       <section class="ontology-layout"><article class="panel"><div class="panel-heading"><h2>Related entities</h2><span id="ontology-seeds">No search yet</span></div><div id="ontology-nodes" class="ontology-nodes empty">Search the ontology to display entities</div></article><article class="panel"><div class="panel-heading"><h2>Relationships</h2><span>Directed graph</span></div><div id="ontology-edges" class="ontology-edges empty">No relationships selected</div></article></section>
     </section>
     <section id="security-panel" class="tab-page" hidden>
@@ -140,5 +141,5 @@
     </form>
   </aside></div>
   <div id="login-screen" class="login-screen" hidden><form id="login-form" class="login-card"><p class="eyebrow">SECURE DASHBOARD</p><h2>Sign in to MES</h2><p>Use your assigned administrator or operator account.</p><label>Username<input id="login-username" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><span id="login-error" role="alert"></span></form></div>
-  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=23.0"></script>
+  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=24.0"></script>
 </body></html>

@@ -22,7 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from assistant.models import ProviderError
 from assistant.evaluation import evaluate_routing
 from assistant.knowledge import EmbeddingError, KnowledgeStore, KnowledgeValidationError, SUPPORTED_EXTENSIONS
-from assistant.ontology import MESOntology
+from assistant.ontology import MESOntology, OntologyValidationError
 from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent, PageContext
 from assistant.service import AssistantNotConfigured, AssistantService
 from assistant.tools import AssistantAuthorizationError, MESReadTools, ToolNotFoundError, ToolValidationError
@@ -99,6 +99,12 @@ class ProductionOrderRequest(BaseModel):
 
 class CommunicationModeRequest(BaseModel):
     mode: Literal["OPC_UA", "MQTT"]
+
+
+class OntologyTripleRequest(BaseModel):
+    subject: str = Field(min_length=1, max_length=100)
+    predicate: str = Field(min_length=1, max_length=80)
+    object: str = Field(min_length=1, max_length=100)
 
 
 class DashboardSecurity(BaseModel):
@@ -213,7 +219,7 @@ async def enforce_dashboard_access(request: Request, call_next):
     if authentication_enabled() and path.startswith("/api/") and not exempt:
         if user is None:
             access_response = JSONResponse({"detail": "Authentication required"}, status_code=401)
-        admin_only = path in {"/api/config", "/api/security", "/api/database", "/api/diagnostics", "/api/monitoring", "/api/system/restart", "/api/knowledge/reindex", "/api/assistant/evaluation"} or (path.startswith("/api/knowledge/documents") and request.method in {"POST", "DELETE"})
+        admin_only = path in {"/api/config", "/api/security", "/api/database", "/api/diagnostics", "/api/monitoring", "/api/system/restart", "/api/knowledge/reindex", "/api/assistant/evaluation"} or (path.startswith("/api/knowledge/documents") and request.method in {"POST", "DELETE"}) or (path.startswith("/api/ontology/triples") and request.method in {"POST", "DELETE"})
         if access_response is None and admin_only and user.role != "admin":
             access_response = JSONResponse({"detail": "Administrator role required"}, status_code=403)
     if access_response is not None:
@@ -390,6 +396,27 @@ async def search_knowledge(request: Request, q: str = Query(min_length=2, max_le
 @app.get("/api/ontology/status")
 async def ontology_status(request: Request) -> dict:
     return ontology.status(request_role(request))
+
+
+@app.get("/api/ontology/triples")
+async def ontology_triples() -> dict:
+    triples = ontology.list_manual()
+    return {"triples": triples, "count": len(triples)}
+
+
+@app.post("/api/ontology/triples", status_code=201)
+async def create_ontology_triple(payload: OntologyTripleRequest) -> dict:
+    try:
+        return ontology.add_manual(payload.subject, payload.predicate, payload.object)
+    except OntologyValidationError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.delete("/api/ontology/triples/{triple_id}")
+async def delete_ontology_triple(triple_id: str) -> dict:
+    if not ontology.delete_manual(triple_id):
+        raise HTTPException(status_code=404, detail="Manual triple not found")
+    return {"deleted": True, "id": triple_id}
 
 
 @app.get("/api/ontology/search")

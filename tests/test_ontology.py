@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import patch
 
 from assistant.knowledge import KnowledgeStore
-from assistant.ontology import MESOntology
+from assistant.ontology import MESOntology, OntologyValidationError
 from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent
 from assistant.tools import MESReadTools
 
@@ -69,3 +69,23 @@ class OntologyTests(unittest.TestCase):
         self.assertGreater(pressure["semantic_score"],0.9)
         status=ontology.status("operator")
         self.assertEqual(status["semantic_weight"],0.6)
+
+    def test_manual_triple_persists_and_joins_graph(self):
+        triple=self.ontology.add_manual("MACHINE-01","has component","HYDRAULIC-PUMP-01")
+        self.assertEqual(triple["predicate"],"HAS_COMPONENT")
+        graph=self.ontology.build("operator")
+        self.assertIn({"source":"MACHINE-01","relation":"HAS_COMPONENT","target":"HYDRAULIC-PUMP-01"},graph["edges"])
+        self.assertIn("HYDRAULIC-PUMP-01",{node["id"] for node in graph["nodes"]})
+        reloaded=MESOntology(FakeController(),self.knowledge)
+        self.assertEqual(reloaded.list_manual(),[triple])
+        self.assertIn("HYDRAULIC-PUMP-01",{node["id"] for node in reloaded.search("hydraulic pump","operator",1)["nodes"]})
+
+    def test_manual_triple_validation_duplicate_and_delete(self):
+        triple=self.ontology.add_manual("MACHINE-01","HAS_COMPONENT","PUMP-01")
+        with self.assertRaises(OntologyValidationError):
+            self.ontology.add_manual("MACHINE-01","HAS_COMPONENT","PUMP-01")
+        with self.assertRaises(OntologyValidationError):
+            self.ontology.add_manual("bad entity!","HAS_COMPONENT","PUMP-02")
+        self.assertTrue(self.ontology.delete_manual(triple["id"]))
+        self.assertFalse(self.ontology.delete_manual(triple["id"]))
+        self.assertEqual(self.ontology.list_manual(),[])

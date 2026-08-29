@@ -3,7 +3,14 @@ from __future__ import annotations
 import math
 import os
 import re
+import json
+import hashlib
+import threading
 from collections import deque
+from pathlib import Path
+
+class OntologyValidationError(ValueError):
+    pass
 
 class MESOntology:
     SENSOR_DEFINITIONS = (
@@ -11,7 +18,10 @@ class MESOntology:
         ("TEMPERATURE-SENSOR-01", "Temperature sensor", "temperature", "°C"),
         ("RPM-SENSOR-01", "Motor speed sensor", "rpm", "RPM"),
     )
-    def __init__(self, controller, knowledge_store):
+    ENTITY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,99}$")
+    RELATION_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]{0,79}$")
+
+    def __init__(self, controller, knowledge_store, manual_path=None):
         self.controller, self.knowledge_store = controller, knowledge_store
         self.embedder = knowledge_store.embedder
         self.search_mode = os.getenv("MES_ONTOLOGY_SEARCH_MODE", "hybrid").strip().lower()
@@ -19,6 +29,69 @@ class MESOntology:
         except ValueError: self.semantic_weight = 0.60
         self._vector_cache = {}
         self.last_embedding_error = ""
+        configured_path = os.getenv("MES_ONTOLOGY_MANUAL_TRIPLES_PATH", "").strip()
+        self.manual_path = Path(manual_path or configured_path or (knowledge_store.root / "ontology" / "manual_triples.json"))
+        self._manual_lock = threading.RLock()
+        self._manual_triples = self._load_manual_triples()
+
+    def _load_manual_triples(self):
+        if not self.manual_path.exists():
+            return []
+        try:
+            payload = json.loads(self.manual_path.read_text(encoding="utf-8"))
+            return payload if isinstance(payload, list) else []
+        except (OSError, json.JSONDecodeError):
+            return []
+
+    def _save_manual_triples(self):
+        self.manual_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.manual_path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(self._manual_triples, indent=2, ensure_ascii=False), encoding="utf-8")
+        temporary.replace(self.manual_path)
+
+    @classmethod
+    def _validate_entity_id(cls, value, field):
+        identifier = str(value).strip()
+        if not cls.ENTITY_PATTERN.fullmatch(identifier):
+            raise OntologyValidationError(f"{field} must be 1-100 characters using letters, numbers, '.', ':', '_' or '-'")
+        return identifier
+
+    @classmethod
+    def _normalize_relation(cls, value):
+        relation = re.sub(r"[\s-]+", "_", str(value).strip()).upper()
+        if not cls.RELATION_PATTERN.fullmatch(relation):
+            raise OntologyValidationError("Predicate must be 1-80 characters using letters, numbers or underscores")
+        return relation
+
+    def list_manual(self):
+        with self._manual_lock:
+            return [dict(triple) for triple in self._manual_triples]
+
+    def add_manual(self, subject, predicate, object_):
+        subject = self._validate_entity_id(subject, "Subject")
+        object_ = self._validate_entity_id(object_, "Object")
+        predicate = self._normalize_relation(predicate)
+        if subject == object_:
+            raise OntologyValidationError("Subject and object must be different")
+        digest = hashlib.sha256(f"{subject}\0{predicate}\0{object_}".encode()).hexdigest()[:20]
+        triple = {"id": digest, "subject": subject, "predicate": predicate, "object": object_}
+        with self._manual_lock:
+            if any(item["id"] == digest for item in self._manual_triples):
+                raise OntologyValidationError("This triple already exists")
+            self._manual_triples.append(triple)
+            self._save_manual_triples()
+        self._vector_cache.clear()
+        return dict(triple)
+
+    def delete_manual(self, triple_id):
+        with self._manual_lock:
+            original = len(self._manual_triples)
+            self._manual_triples = [item for item in self._manual_triples if item.get("id") != triple_id]
+            if len(self._manual_triples) == original:
+                return False
+            self._save_manual_triples()
+        self._vector_cache.clear()
+        return True
 
     @staticmethod
     def _node(identifier, kind, label, **properties):
@@ -56,6 +129,14 @@ class MESOntology:
                 type_id=f"ALARM-TYPE:{alarm_type}"
                 if type_id not in nodes: nodes[type_id]=self._node(type_id,"AlarmType",alarm_type.replace("_"," "),alarm_type=alarm_type)
                 edges.append(self._edge(type_id,"REQUIRES_PROCEDURE",doc_id))
+        existing_edges={(edge["source"],edge["relation"],edge["target"]) for edge in edges}
+        for triple in self.list_manual():
+            for identifier in (triple["subject"], triple["object"]):
+                if identifier not in nodes:
+                    nodes[identifier]=self._node(identifier,"ManualEntity",identifier.replace("_"," "))
+            edge_key=(triple["subject"],triple["predicate"],triple["object"])
+            if edge_key not in existing_edges:
+                edges.append(self._edge(*edge_key)); existing_edges.add(edge_key)
         return {"nodes":list(nodes.values()),"edges":edges}
 
     @staticmethod
@@ -128,4 +209,4 @@ class MESOntology:
         graph=self.build(role); counts={}
         for node in graph["nodes"]:counts[node["type"]]=counts.get(node["type"],0)+1
         hybrid=self.search_mode=="hybrid" and self.embedder.configured
-        return {"phase":8,"nodes":len(graph["nodes"]),"relationships":len(graph["edges"]),"entity_types":counts,"search_mode":"hybrid" if hybrid else "lexical","semantic_weight":self.semantic_weight,"lexical_weight":1-self.semantic_weight,"embedding_model":self.embedder.model or None,"cached_entity_vectors":len(self._vector_cache),"last_embedding_error":self.last_embedding_error or None}
+        return {"phase":8,"nodes":len(graph["nodes"]),"relationships":len(graph["edges"]),"manual_triples":len(self.list_manual()),"entity_types":counts,"search_mode":"hybrid" if hybrid else "lexical","semantic_weight":self.semantic_weight,"lexical_weight":1-self.semantic_weight,"embedding_model":self.embedder.model or None,"cached_entity_vectors":len(self._vector_cache),"last_embedding_error":self.last_embedding_error or None}

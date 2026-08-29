@@ -1,3 +1,3 @@
-from .graph import MESOntology
+from .graph import MESOntology, OntologyValidationError
 
-__all__ = ["MESOntology"]
+__all__ = ["MESOntology", "OntologyValidationError"]
