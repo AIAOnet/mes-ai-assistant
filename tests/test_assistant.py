@@ -24,7 +24,7 @@ class AssistantConfigurationTests(unittest.TestCase):
                        "MES_AI_API_KEY": "top-secret", "MES_AI_MODEL": "factory-model"}
         with patch.dict(os.environ, environment, clear=True):
             status = AssistantService().status()
-        self.assertEqual(status, {"configured": True, "model": "factory-model", "phase": 5})
+        self.assertEqual(status, {"configured": True, "model": "factory-model", "phase": 6})
         self.assertNotIn("top-secret", json.dumps(status))
         self.assertNotIn("models.example", json.dumps(status))
 

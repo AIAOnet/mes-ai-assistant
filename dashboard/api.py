@@ -459,6 +459,24 @@ async def mes_oee_comparison(machine_id: str, period_a: str, period_b: str) -> d
         raise HTTPException(status_code=403, detail=str(error)) from error
 
 
+@app.get("/api/mes/machines/{machine_id}/investigations/latest-stop")
+async def mes_stop_investigation(machine_id: str, period: str = "today") -> dict:
+    try:
+        return mes_tools.investigate_machine_stop(machine_id, period).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/alarms/{alarm_id}/investigation")
+async def mes_alarm_investigation(alarm_id: str) -> dict:
+    try:
+        return mes_tools.investigate_alarm(alarm_id).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    except ToolNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
 @app.get("/api/mes/alarms/{alarm_id}")
 async def mes_alarm_details(alarm_id: str) -> dict:
     alarm = next((item for item in controller.read_machine_alarms("MACHINE-01") if item["id"] == alarm_id), None)

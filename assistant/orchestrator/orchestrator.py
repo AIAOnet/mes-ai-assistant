@@ -26,8 +26,11 @@ class AssistantOrchestrator:
         period = self._period(text)
         if context.alarm_id and (
             re.search(r"\b(this|selected|current) alarm\b", text)
-            or (context.page == "alarm_details" and re.search(r"\b(it|this|what happened|status|explain)\b", text))
+            or (context.page == "alarm_details" and re.search(r"\b(it|this|what happened|why|before|status|explain)\b", text))
         ):
+            if re.search(r"\b(why|before|what happened|investigate|cause|caused)\b", text):
+                return QueryPlan(AssistantMode.DATA, Intent.INVESTIGATION, "investigate_alarm",
+                                 {"alarm_id": context.alarm_id}, context_data)
             return QueryPlan(AssistantMode.DATA, Intent.ALARMS, "get_alarm_details",
                              {"alarm_id": context.alarm_id}, context_data)
         operational = bool(machine_id or re.search(
@@ -39,6 +42,12 @@ class AssistantOrchestrator:
         ))
         analytical = analytical or bool(re.search(r"\bmean\s+(?:pressure|temperature|rpm)\b", text))
         metric_match = re.search(r"\b(pressure|temperature|rpm|production count)\b", text)
+        if re.search(r"\b(why did|what happened before|investigate|abnormal.*before|what changed before)\b", text) and re.search(
+            r"\b(stop|stopped|failure|machine|it)\b", text
+        ):
+            return QueryPlan(AssistantMode.DATA, Intent.INVESTIGATION, "investigate_machine_stop", {
+                "machine_id": machine_id or "MACHINE-01", "period": period or "today",
+            }, context_data)
         if operational and re.search(r"\b(why|cause|caused|root cause)\b", text):
             return QueryPlan(AssistantMode.DATA, Intent.UNSUPPORTED_OPERATIONAL, context=context_data)
         if re.search(r"\bdowntime\b|how long.*(?:stop|stopped)", text):
@@ -127,6 +136,8 @@ class AssistantOrchestrator:
             "get_downtime": self.tools.get_downtime,
             "analyze_oee": self.tools.analyze_oee,
             "compare_oee": self.tools.compare_oee,
+            "investigate_machine_stop": self.tools.investigate_machine_stop,
+            "investigate_alarm": self.tools.investigate_alarm,
         }
         return allowed[plan.tool](**plan.arguments)
 

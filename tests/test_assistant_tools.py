@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent, PageContext
@@ -21,6 +21,13 @@ class FakeController:
         return alarms if not active_only or alarms[0]["status"] == "ACTIVE" else []
 
     def read_machine_history(self, machine_id, tag_name, start, end, limit):
+        if tag_name == "Machine01.Status":
+            return [{"id": "S-1", "machine_id": machine_id, "tag": tag_name,
+                     "value": "RUNNING", "time": start.isoformat()},
+                    {"id": "S-2", "machine_id": machine_id, "tag": tag_name,
+                     "value": "STOPPED", "time": (start + timedelta(minutes=10)).isoformat()},
+                    {"id": "S-3", "machine_id": machine_id, "tag": tag_name,
+                     "value": "RUNNING", "time": (start + timedelta(minutes=15)).isoformat()}][:limit]
         return [{"id": "1", "machine_id": machine_id, "tag": tag_name,
                  "value": 68.0, "time": start.isoformat()},
                 {"id": "2", "machine_id": machine_id, "tag": tag_name,
@@ -131,9 +138,10 @@ class OrchestratorTests(unittest.TestCase):
         plan = self.orchestrator.plan("What does a high-pressure alarm mean?")
         self.assertEqual(plan.mode, AssistantMode.ASK)
 
-    def test_phase_three_question_is_not_guessed(self):
+    def test_stop_question_uses_phase_six_investigation(self):
         plan = self.orchestrator.plan("Why did Machine 01 stop?")
-        self.assertEqual(plan.intent, Intent.UNSUPPORTED_OPERATIONAL)
+        self.assertEqual(plan.intent, Intent.INVESTIGATION)
+        self.assertEqual(plan.tool, "investigate_machine_stop")
 
     def test_machine_page_context_resolves_implicit_pressure_question(self):
         plan = self.orchestrator.plan(
@@ -218,6 +226,31 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(maximum.tool, "analyze_metric")
         self.assertEqual(downtime.tool, "get_downtime")
         self.assertEqual(comparison.tool, "compare_oee")
+
+    def test_stop_investigation_builds_labeled_evidence(self):
+        result = self.orchestrator.tools.investigate_machine_stop("MACHINE-01", "today")
+        self.assertEqual(result.tool, "investigate_machine_stop")
+        self.assertEqual(result.data["target"]["type"], "machine_stop")
+        self.assertTrue(all(item["classification"] == "FACT" for item in result.data["timeline"]))
+        self.assertEqual(result.data["unknown"]["classification"], "UNKNOWN")
+
+    def test_alarm_investigation_uses_selected_alarm_time(self):
+        result = self.orchestrator.tools.investigate_alarm("A-103")
+        self.assertEqual(result.data["target"]["id"], "A-103")
+        self.assertEqual(result.sources[0]["type"], "alarm")
+
+    def test_investigation_questions_route_to_evidence_tools(self):
+        stop = self.orchestrator.plan("Why did Machine 01 stop?")
+        alarm = self.orchestrator.plan(
+            "What happened before this alarm?",
+            PageContext("alarm_details", "MACHINE-01", alarm_id="A-103"), "investigation-chat",
+        )
+        self.assertEqual(stop.tool, "investigate_machine_stop")
+        self.assertEqual(alarm.tool, "investigate_alarm")
+
+    def test_generic_causal_question_still_fails_closed(self):
+        plan = self.orchestrator.plan("What caused the OEE to decrease?")
+        self.assertEqual(plan.intent, Intent.UNSUPPORTED_OPERATIONAL)
 
 
 if __name__ == "__main__":

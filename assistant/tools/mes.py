@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 import re
 from typing import Any
 from assistant.analytics import compare_statistics, downtime_statistics, metric_statistics
+from assistant.investigation import build_timeline, correlations, evidence_item, parse_time
 
 
 class ToolValidationError(ValueError):
@@ -237,6 +238,84 @@ class MESReadTools:
             "period_a": first, "period_b": second, "deltas_a_minus_b": deltas}, [{
                 "type": "oee_comparison", "id": f"{machine_id}:{period_a}:{period_b}",
                 "uri": f"/api/mes/machines/{machine_id}/analytics/oee-compare?period_a={period_a}&period_b={period_b}"}])
+
+    @staticmethod
+    def _sample(items: list[dict], maximum: int = 24) -> list[dict]:
+        if len(items) <= maximum:
+            return items
+        indexes = {round(index * (len(items) - 1) / (maximum - 1)) for index in range(maximum)}
+        return [item for index, item in enumerate(items) if index in indexes]
+
+    def _investigation(
+        self, machine_id: str, target_time: datetime, target_type: str, target_id: str,
+        before_minutes: int = 5, after_minutes: int = 2,
+    ) -> ToolResult:
+        machine_id = self._machine(machine_id)
+        if not 1 <= before_minutes <= 30 or not 1 <= after_minutes <= 10:
+            raise ToolValidationError("Investigation window is outside the allowed range")
+        start = target_time - timedelta(minutes=before_minutes)
+        end = target_time + timedelta(minutes=after_minutes)
+        readings = {}
+        for metric in ("pressure", "temperature", "rpm", "status"):
+            tag, _ = self.METRICS[metric]
+            readings[metric] = self._sample(
+                self.controller.read_machine_history(machine_id, tag, start, end, 500)
+            )
+        events = self.controller.read_event_history(machine_id, start, end, 200)
+        alarms = self.controller.read_machine_alarms(machine_id, since=start, until=end)
+        tasks = self.controller.read_maintenance_history(machine_id, start, end, 100)
+        production = self.controller.read_production_history(machine_id, start, end, 100)
+        timeline = build_timeline(readings, events, alarms, tasks, production)
+        target_label = f"{target_type} {target_id}"
+        findings = correlations(timeline, target_time, target_label)
+        high_pressure_nearby = any(
+            item["kind"] in {"alarm", "event"} and "PRESSURE" in item["statement"].upper()
+            and abs((parse_time(item["time"]) - target_time).total_seconds()) <= 60
+            for item in timeline
+        )
+        inference = ({"classification": "INFERENCE",
+            "statement": "The timing indicates pressure may be associated with the target event; "
+                         "the MES evidence does not prove mechanical causation."}
+                     if high_pressure_nearby else None)
+        unknown = {"classification": "UNKNOWN",
+                   "statement": "A confirmed mechanical root cause cannot be determined from MES data alone."}
+        window_id = f"{machine_id}:{start.isoformat()}:{end.isoformat()}"
+        sources = [
+            {"type": target_type, "id": target_id, "uri": f"/api/mes/{target_type}s/{target_id}"},
+            {"type": "machine_readings", "id": window_id, "uri": f"/api/mes/machines/{machine_id}/history"},
+            {"type": "event_history", "id": window_id, "uri": f"/api/mes/machines/{machine_id}/events"},
+            {"type": "alarm_history", "id": window_id, "uri": f"/api/mes/machines/{machine_id}/alarms"},
+            {"type": "maintenance_history", "id": window_id, "uri": f"/api/mes/machines/{machine_id}/maintenance"},
+            {"type": "production_history", "id": window_id, "uri": f"/api/mes/machines/{machine_id}/production-history"},
+        ]
+        data = {"machine_id": machine_id, "target": {"type": target_type, "id": target_id,
+                "time": target_time.isoformat()}, "window": {"start": start.isoformat(),
+                "end": end.isoformat(), "before_minutes": before_minutes,
+                "after_minutes": after_minutes}, "timeline": timeline, "correlations": findings,
+                "inference": inference, "unknown": unknown}
+        return ToolResult("investigate_event", data, sources)
+
+    def investigate_machine_stop(self, machine_id: str, period: str = "today") -> ToolResult:
+        machine_id = self._machine(machine_id)
+        start, end = self._window(period)
+        status_tag, _ = self.METRICS["status"]
+        statuses = self.controller.read_machine_history(machine_id, status_tag, start, end, 500)
+        stop = next((item for item in reversed(statuses) if str(item.get("value")).upper() == "STOPPED"), None)
+        if stop is None:
+            return ToolResult("investigate_machine_stop", {"machine_id": machine_id,
+                "period": period, "target": None, "timeline": [], "correlations": [],
+                "inference": None, "unknown": {"classification": "UNKNOWN",
+                "statement": "No machine stop was found in the selected period."}}, [{
+                    "type": "status_history", "id": f"{machine_id}:{period}",
+                    "uri": f"/api/mes/machines/{machine_id}/history?metric=status&period={period}"}])
+        result = self._investigation(machine_id, parse_time(stop["time"]), "machine_stop", stop["id"])
+        return ToolResult("investigate_machine_stop", result.data, result.sources)
+
+    def investigate_alarm(self, alarm_id: str) -> ToolResult:
+        details = self.get_alarm_details(alarm_id).data["alarm"]
+        result = self._investigation(details["machine_id"], parse_time(details["triggered_time"]),
+                                     "alarm", alarm_id)
+        return ToolResult("investigate_alarm", result.data, result.sources)
 
     def get_alarm_details(self, alarm_id: str) -> ToolResult:
         if not re.fullmatch(r"A-[A-Za-z0-9_-]{1,64}", alarm_id):
