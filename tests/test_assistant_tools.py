@@ -1,11 +1,15 @@
 import unittest
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent, PageContext
 from assistant.tools import MESReadTools, ToolNotFoundError, ToolValidationError
 
 
 class FakeController:
+    settings = {"pressure": {"warning": 85.0}, "temperature": {"warning": 75.0}}
+    update_interval = 1.0
+    machine = SimpleNamespace(production_interval_ticks=5)
     def snapshot(self):
         return {"machine_status": "RUNNING", "pressure": 72.0, "temperature": 58.0,
                 "rpm": 1450, "production_count": 47}
@@ -183,10 +187,37 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(alarm.arguments["period"], "last_24_hours")
         self.assertEqual(production.tool, "get_production_history")
 
-    def test_trend_calculation_remains_fail_closed_until_phase_five(self):
+    def test_trend_question_uses_deterministic_phase_five_tool(self):
         plan = self.orchestrator.plan("Any pressure increases in the last 24 hours?")
-        self.assertEqual(plan.intent, Intent.UNSUPPORTED_OPERATIONAL)
-        self.assertIsNone(plan.tool)
+        self.assertEqual(plan.intent, Intent.METRIC_ANALYTICS)
+        self.assertEqual(plan.tool, "analyze_metric")
+        self.assertEqual(plan.arguments["period"], "last_24_hours")
+
+    def test_metric_analytics_are_calculated_by_tool(self):
+        result = self.orchestrator.tools.analyze_metric("MACHINE-01", "pressure", "last_1_hours")
+        self.assertEqual(result.data["trend"], "INCREASING")
+        self.assertEqual(result.data["minimum"], 68.0)
+        self.assertEqual(result.data["maximum"], 72.0)
+        self.assertEqual(result.sources[0]["type"], "metric_analysis")
+
+    def test_metric_comparison_has_deterministic_deltas(self):
+        result = self.orchestrator.tools.compare_metric("MACHINE-01", "pressure", "today", "yesterday")
+        self.assertTrue(result.data["comparison_a_minus_b"]["available"])
+        self.assertEqual(result.data["comparison_a_minus_b"]["mean_delta"], 0.0)
+
+    def test_downtime_and_oee_tools_return_coverage_metadata(self):
+        downtime = self.orchestrator.tools.get_downtime("MACHINE-01", "today")
+        oee = self.orchestrator.tools.analyze_oee("MACHINE-01", "today")
+        self.assertIn("coverage", downtime.data)
+        self.assertIn("coverage_note", oee.data)
+
+    def test_analytics_questions_route_to_specific_tools(self):
+        maximum = self.orchestrator.plan("What was the maximum pressure during the last hour?")
+        downtime = self.orchestrator.plan("How much downtime occurred today?")
+        comparison = self.orchestrator.plan("Compare today's OEE with yesterday")
+        self.assertEqual(maximum.tool, "analyze_metric")
+        self.assertEqual(downtime.tool, "get_downtime")
+        self.assertEqual(comparison.tool, "compare_oee")
 
 
 if __name__ == "__main__":

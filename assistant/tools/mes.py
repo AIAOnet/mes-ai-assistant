@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import re
 from typing import Any
+from assistant.analytics import compare_statistics, downtime_statistics, metric_statistics
 
 
 class ToolValidationError(ValueError):
@@ -153,6 +154,89 @@ class MESReadTools:
             "start_time": start.isoformat(), "end_time": end.isoformat(), "count": len(records),
             "records": records}, [{"type": "production_history", "id": f"{machine_id}:{period}",
             "uri": f"/api/mes/machines/{machine_id}/production-history?period={period}"}])
+
+    def analyze_metric(self, machine_id: str, metric: str, period: str) -> ToolResult:
+        machine_id = self._machine(machine_id)
+        if metric not in self.METRICS or metric == "status":
+            raise ToolValidationError(f"Metric cannot be analyzed: {metric}")
+        start, end = self._window(period)
+        tag, unit = self.METRICS[metric]
+        readings = self.controller.read_machine_history(machine_id, tag, start, end, 500)
+        threshold = None
+        if metric in {"pressure", "temperature"}:
+            threshold = self.controller.settings.get(metric, {}).get("warning")
+        analysis = metric_statistics(readings, threshold)
+        data = {"machine_id": machine_id, "metric": metric, "unit": unit, "period": period,
+                "start_time": start.isoformat(), "end_time": end.isoformat(), **analysis}
+        return ToolResult("analyze_metric", data, [{"type": "metric_analysis",
+            "id": f"{machine_id}:{metric}:{period}",
+            "uri": f"/api/mes/machines/{machine_id}/analytics/metric?metric={metric}&period={period}"}])
+
+    def compare_metric(self, machine_id: str, metric: str, period_a: str, period_b: str) -> ToolResult:
+        first = self.analyze_metric(machine_id, metric, period_a).data
+        second = self.analyze_metric(machine_id, metric, period_b).data
+        comparison = compare_statistics(first, second)
+        data = {"machine_id": self._machine(machine_id), "metric": metric,
+                "period_a": first, "period_b": second, "comparison_a_minus_b": comparison}
+        return ToolResult("compare_metric", data, [{"type": "metric_comparison",
+            "id": f"{machine_id}:{metric}:{period_a}:{period_b}",
+            "uri": f"/api/mes/machines/{machine_id}/analytics/compare?metric={metric}&period_a={period_a}&period_b={period_b}"}])
+
+    def get_downtime(self, machine_id: str, period: str) -> ToolResult:
+        machine_id = self._machine(machine_id)
+        start, end = self._window(period)
+        status_tag, _ = self.METRICS["status"]
+        readings = self.controller.read_machine_history(machine_id, status_tag, start, end, 500)
+        data = {"machine_id": machine_id, "period": period, "start_time": start.isoformat(),
+                "end_time": end.isoformat(), **downtime_statistics(readings, start, end)}
+        return ToolResult("get_downtime", data, [{"type": "downtime_analysis",
+            "id": f"{machine_id}:{period}",
+            "uri": f"/api/mes/machines/{machine_id}/analytics/downtime?period={period}"}])
+
+    def analyze_oee(self, machine_id: str, period: str) -> ToolResult:
+        machine_id = self._machine(machine_id)
+        start, end = self._window(period)
+        status_tag, _ = self.METRICS["status"]
+        statuses = self.controller.read_machine_history(machine_id, status_tag, start, end, 500)
+        downtime = downtime_statistics(statuses, start, end)
+        records = self.controller.read_production_history(machine_id, start, end, 200)
+        grouped: dict[str, list[dict]] = {}
+        for record in records:
+            grouped.setdefault(str(record.get("ProductionOrderId")), []).append(record)
+        total = good = rejected = 0
+        for order_records in grouped.values():
+            ordered = sorted(order_records, key=lambda item: item.get("RecordedTime") or "")
+            if len(ordered) < 2:
+                continue
+            total += max(0, int(ordered[-1].get("TotalQuantity") or 0) - int(ordered[0].get("TotalQuantity") or 0))
+            good += max(0, int(ordered[-1].get("GoodQuantity") or 0) - int(ordered[0].get("GoodQuantity") or 0))
+            rejected += max(0, int(ordered[-1].get("RejectedQuantity") or 0) - int(ordered[0].get("RejectedQuantity") or 0))
+        operating = (max(0.0, downtime["period_seconds"] - downtime["downtime_seconds"])
+                     if downtime["downtime_seconds"] is not None else None)
+        ideal_cycle = self.controller.update_interval * self.controller.machine.production_interval_ticks
+        availability = downtime["availability_percent"]
+        performance = min(100.0, total * ideal_cycle / operating * 100) if operating else None
+        quality = good / total * 100 if total else None
+        oee = availability / 100 * performance / 100 * quality if None not in (availability, performance, quality) else None
+        data = {"machine_id": machine_id, "period": period, "start_time": start.isoformat(),
+                "end_time": end.isoformat(), "availability": availability, "performance": performance,
+                "quality": quality, "oee": oee, "produced_delta": total, "good_delta": good,
+                "rejected_delta": rejected, "production_orders_with_baseline":
+                sum(1 for items in grouped.values() if len(items) >= 2), "downtime": downtime,
+                "coverage_note": "OEE uses orders with at least two production records in the selected period."}
+        return ToolResult("analyze_oee", data, [{"type": "oee_analysis",
+            "id": f"{machine_id}:{period}",
+            "uri": f"/api/mes/machines/{machine_id}/analytics/oee?period={period}"}])
+
+    def compare_oee(self, machine_id: str, period_a: str, period_b: str) -> ToolResult:
+        first = self.analyze_oee(machine_id, period_a).data
+        second = self.analyze_oee(machine_id, period_b).data
+        deltas = {name: first[name] - second[name] if first[name] is not None and second[name] is not None else None
+                  for name in ("availability", "performance", "quality", "oee")}
+        return ToolResult("compare_oee", {"machine_id": self._machine(machine_id),
+            "period_a": first, "period_b": second, "deltas_a_minus_b": deltas}, [{
+                "type": "oee_comparison", "id": f"{machine_id}:{period_a}:{period_b}",
+                "uri": f"/api/mes/machines/{machine_id}/analytics/oee-compare?period_a={period_a}&period_b={period_b}"}])
 
     def get_alarm_details(self, alarm_id: str) -> ToolResult:
         if not re.fullmatch(r"A-[A-Za-z0-9_-]{1,64}", alarm_id):

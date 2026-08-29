@@ -310,8 +310,8 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
         plan = assistant_orchestrator.plan(message, page_context, conversation_key)
         if plan.intent == Intent.UNSUPPORTED_OPERATIONAL:
             answer = (
-                "That operational question requires historical or investigation tools that are "
-                "not available until Phase 5 analytics. I will not guess from raw historical data."
+                "That operational question requires investigation tools that are not available "
+                "until Phase 6. I will not infer a cause from correlation alone."
             )
             assistant_service.remember_exchange(conversation_key, message, answer)
             model = None
@@ -415,6 +415,46 @@ async def mes_maintenance_history(machine_id: str, period: str, limit: int = 100
 async def mes_production_history(machine_id: str, period: str, limit: int = 100) -> dict:
     try:
         return mes_tools.get_production_history(machine_id, period, limit).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/machines/{machine_id}/analytics/metric")
+async def mes_metric_analytics(machine_id: str, metric: str, period: str) -> dict:
+    try:
+        return mes_tools.analyze_metric(machine_id, metric, period).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/machines/{machine_id}/analytics/compare")
+async def mes_metric_comparison(machine_id: str, metric: str, period_a: str, period_b: str) -> dict:
+    try:
+        return mes_tools.compare_metric(machine_id, metric, period_a, period_b).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/machines/{machine_id}/analytics/downtime")
+async def mes_downtime(machine_id: str, period: str) -> dict:
+    try:
+        return mes_tools.get_downtime(machine_id, period).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/machines/{machine_id}/analytics/oee")
+async def mes_oee_analytics(machine_id: str, period: str) -> dict:
+    try:
+        return mes_tools.analyze_oee(machine_id, period).as_context()
+    except ToolValidationError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@app.get("/api/mes/machines/{machine_id}/analytics/oee-compare")
+async def mes_oee_comparison(machine_id: str, period_a: str, period_b: str) -> dict:
+    try:
+        return mes_tools.compare_oee(machine_id, period_a, period_b).as_context()
     except ToolValidationError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
 

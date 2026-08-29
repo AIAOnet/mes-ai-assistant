@@ -34,11 +34,31 @@ class AssistantOrchestrator:
             r"\b(current|today|now|machine|alarm|production|produced|pressure|temperature|rpm|oee)\b", text
         ))
         analytical = bool(re.search(
-            r"\b(trend|increas(?:e|es|ed|ing)|decreas(?:e|es|ed|ing)|maximum|max|minimum|min|average|mean|median|compare|rate of change)\b",
+            r"\b(trend|increas(?:e|es|ed|ing)|decreas(?:e|es|ed|ing)|maximum|max|minimum|min|average|median|compare|rate of change)\b",
             text,
         ))
-        if analytical and period:
+        analytical = analytical or bool(re.search(r"\bmean\s+(?:pressure|temperature|rpm)\b", text))
+        metric_match = re.search(r"\b(pressure|temperature|rpm|production count)\b", text)
+        if operational and re.search(r"\b(why|cause|caused|root cause)\b", text):
             return QueryPlan(AssistantMode.DATA, Intent.UNSUPPORTED_OPERATIONAL, context=context_data)
+        if re.search(r"\bdowntime\b|how long.*(?:stop|stopped)", text):
+            return QueryPlan(AssistantMode.DATA, Intent.DOWNTIME, "get_downtime", {
+                "machine_id": machine_id or "MACHINE-01", "period": period or "today",
+            }, context_data)
+        if re.search(r"\boee\b|overall equipment effectiveness", text) and re.search(r"\bcompare\b", text):
+            return QueryPlan(AssistantMode.DATA, Intent.OEE_COMPARISON, "compare_oee", {
+                "machine_id": machine_id or "MACHINE-01", "period_a": "today", "period_b": "yesterday",
+            }, context_data)
+        if metric_match and analytical and re.search(r"\bcompare\b", text):
+            return QueryPlan(AssistantMode.DATA, Intent.METRIC_COMPARISON, "compare_metric", {
+                "machine_id": machine_id or "MACHINE-01", "metric": metric_match.group(1).replace(" ", "_"),
+                "period_a": "today", "period_b": "yesterday",
+            }, context_data)
+        if metric_match and analytical:
+            return QueryPlan(AssistantMode.DATA, Intent.METRIC_ANALYTICS, "analyze_metric", {
+                "machine_id": machine_id or "MACHINE-01", "metric": metric_match.group(1).replace(" ", "_"),
+                "period": period or "last_1_hours",
+            }, context_data)
         if re.search(r"\bmaintenance\b|\btasks?\b", text) and period:
             return QueryPlan(AssistantMode.DATA, Intent.MAINTENANCE_HISTORY, "get_maintenance_history",
                              {"machine_id": machine_id or "MACHINE-01", "period": period}, context_data)
@@ -50,6 +70,10 @@ class AssistantOrchestrator:
                 r"\b(current|today|now|our|machine|value|show)\b", text
             ):
                 return QueryPlan(AssistantMode.ASK, Intent.GENERAL_KNOWLEDGE, context=context_data)
+            if period:
+                return QueryPlan(AssistantMode.DATA, Intent.OEE_ANALYTICS, "analyze_oee", {
+                    "machine_id": machine_id or "MACHINE-01", "period": period,
+                }, context_data)
             if operational:
                 return QueryPlan(AssistantMode.DATA, Intent.OEE, "get_oee", {"machine_id": machine_id or "MACHINE-01"}, context_data)
             return QueryPlan(AssistantMode.ASK, Intent.GENERAL_KNOWLEDGE, context=context_data)
@@ -98,6 +122,11 @@ class AssistantOrchestrator:
             "search_events": self.tools.search_events,
             "get_maintenance_history": self.tools.get_maintenance_history,
             "get_production_history": self.tools.get_production_history,
+            "analyze_metric": self.tools.analyze_metric,
+            "compare_metric": self.tools.compare_metric,
+            "get_downtime": self.tools.get_downtime,
+            "analyze_oee": self.tools.analyze_oee,
+            "compare_oee": self.tools.compare_oee,
         }
         return allowed[plan.tool](**plan.arguments)
 
