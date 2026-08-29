@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from assistant.memory import ConversationStore
 from assistant.models import ModelMessage, ModelResponse, OpenAICompatibleProvider
+from assistant.models.openai_compatible import final_answer
 from assistant.service import AssistantConfiguration, AssistantNotConfigured, AssistantService
 
 
@@ -59,6 +60,10 @@ class AssistantServiceTests(unittest.IsolatedAsyncioTestCase):
 
 
 class OpenAICompatibleProviderTests(unittest.TestCase):
+    def test_reasoning_tags_are_removed_from_user_facing_answer(self) -> None:
+        self.assertEqual(final_answer("<think>private reasoning</think>Final answer"), "Final answer")
+        self.assertEqual(final_answer("private reasoning</think>\n\nFinal answer"), "Final answer")
+
     def test_request_uses_bearer_key_and_chat_completions_shape(self) -> None:
         response = MagicMock()
         response.read.return_value = json.dumps({

@@ -1,9 +1,18 @@
 from __future__ import annotations
 import asyncio
 import json
+import re
 import urllib.error
 import urllib.request
 from .base import ModelMessage, ModelProvider, ModelResponse, ProviderError
+
+
+def final_answer(content: str) -> str:
+    """Remove provider reasoning blocks and return only user-facing text."""
+    cleaned = re.sub(r"<think\b[^>]*>.*?</think>\s*", "", content, flags=re.IGNORECASE | re.DOTALL)
+    if re.search(r"</think>", cleaned, flags=re.IGNORECASE):
+        cleaned = re.split(r"</think>", cleaned, flags=re.IGNORECASE)[-1]
+    return cleaned.strip()
 
 class OpenAICompatibleProvider(ModelProvider):
     def __init__(self, endpoint: str, api_key: str, model: str, timeout_seconds: float = 30) -> None:
@@ -30,7 +39,7 @@ class OpenAICompatibleProvider(ModelProvider):
         except (json.JSONDecodeError, UnicodeDecodeError) as error:
             raise ProviderError("Model service returned an invalid response") from error
         try:
-            content = result["choices"][0]["message"]["content"].strip()
+            content = final_answer(result["choices"][0]["message"]["content"])
         except (KeyError, IndexError, TypeError, AttributeError) as error:
             raise ProviderError("Model service response did not contain an assistant message") from error
         if not content:
