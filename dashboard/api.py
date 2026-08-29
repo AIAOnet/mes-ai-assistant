@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from assistant.models import ProviderError
-from assistant.knowledge import KnowledgeStore, KnowledgeValidationError, SUPPORTED_EXTENSIONS
+from assistant.knowledge import EmbeddingError, KnowledgeStore, KnowledgeValidationError, SUPPORTED_EXTENSIONS
 from assistant.orchestrator import AssistantMode, AssistantOrchestrator, Intent, PageContext
 from assistant.service import AssistantNotConfigured, AssistantService
 from assistant.tools import MESReadTools, ToolNotFoundError, ToolValidationError
@@ -210,7 +210,7 @@ async def enforce_dashboard_access(request: Request, call_next):
     if authentication_enabled() and path.startswith("/api/") and not exempt:
         if user is None:
             access_response = JSONResponse({"detail": "Authentication required"}, status_code=401)
-        admin_only = path in {"/api/config", "/api/security", "/api/database", "/api/diagnostics", "/api/monitoring", "/api/system/restart"} or (path.startswith("/api/knowledge/documents") and request.method in {"POST", "DELETE"})
+        admin_only = path in {"/api/config", "/api/security", "/api/database", "/api/diagnostics", "/api/monitoring", "/api/system/restart", "/api/knowledge/reindex"} or (path.startswith("/api/knowledge/documents") and request.method in {"POST", "DELETE"})
         if access_response is None and admin_only and user.role != "admin":
             access_response = JSONResponse({"detail": "Administrator role required"}, status_code=403)
     if access_response is not None:
@@ -311,6 +311,20 @@ async def knowledge_formats() -> dict:
     return {"extensions": SUPPORTED_EXTENSIONS, "max_upload_mb": 25}
 
 
+@app.get("/api/knowledge/status")
+async def knowledge_status() -> dict:
+    return knowledge_store.status()
+
+
+@app.post("/api/knowledge/reindex")
+async def reindex_knowledge() -> dict:
+    try:
+        count = await asyncio.to_thread(knowledge_store.reindex)
+        return {"reindexed_documents": count, **knowledge_store.status()}
+    except EmbeddingError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+
 @app.get("/api/knowledge/documents")
 async def knowledge_documents(request: Request) -> dict:
     documents = knowledge_store.list(request_role(request))
@@ -325,9 +339,10 @@ async def upload_knowledge_document(
 ) -> dict:
     try:
         data = await file.read(25 * 1024 * 1024 + 1)
-        document = knowledge_store.add(file.filename or "upload", data, title, version,
-                                       machine_id, alarm_type,
-                                       [item.strip() for item in roles.split(",") if item.strip()])
+        document = await asyncio.to_thread(
+            knowledge_store.add, file.filename or "upload", data, title, version,
+            machine_id, alarm_type, [item.strip() for item in roles.split(",") if item.strip()]
+        )
         return {"document": document, "indexed": True}
     except KnowledgeValidationError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
@@ -348,7 +363,9 @@ async def delete_knowledge_document(document_id: str) -> dict:
 async def search_knowledge(request: Request, q: str = Query(min_length=2, max_length=500),
                            limit: int = Query(5, ge=1, le=10), machine_id: str = "",
                            alarm_type: str = "") -> dict:
-    results = knowledge_store.search(q, request_role(request), limit, machine_id, alarm_type)
+    results = await asyncio.to_thread(
+        knowledge_store.search, q, request_role(request), limit, machine_id, alarm_type
+    )
     return {"query": q, "results": results, "count": len(results)}
 
 

@@ -53,7 +53,7 @@
       <section class="trace-layout"><article class="panel trace-detail"><div class="panel-heading"><h2>Selected trace</h2><span id="selected-trace-time">—</span></div><dl><dt>Trace ID</dt><dd id="selected-trace-id">—</dd><dt>Tag and value</dt><dd id="selected-trace-tag">—</dd><dt>Delivery</dt><dd id="selected-trace-delivery">—</dd><dt>Message body</dt><dd><pre id="selected-trace-payload">—</pre></dd><dt>MES input</dt><dd><pre id="selected-processor-input">—</pre></dd><dt>Decision</dt><dd id="selected-trace-decision">—</dd><dt>Outcome</dt><dd id="selected-trace-outcome">—</dd><dt>SQL records</dt><dd><pre id="selected-sql-records">—</pre></dd></dl></article><article class="panel trace-timeline-panel"><div class="panel-heading"><h2>Trace timeline</h2><span>Click a row to replay</span></div><div id="trace-timeline" class="empty">Waiting for MES values</div></article></section>
     </section>
     <section id="knowledge-panel" class="tab-page" hidden>
-      <div class="database-heading"><div><p class="eyebrow">STAGE 2 · PHASE 7</p><h2>Knowledge Base / RAG</h2><p>Upload approved MES procedures, manuals, and engineering references for grounded assistant answers.</p></div><span id="knowledge-count">0 documents</span></div>
+      <div class="database-heading"><div><p class="eyebrow">STAGE 2 · PHASE 7 · HYBRID SEARCH</p><h2>Knowledge Base / RAG</h2><p>Upload approved MES procedures, manuals, and engineering references for grounded assistant answers.</p></div><div class="knowledge-status"><strong id="knowledge-search-mode">Checking search…</strong><span id="knowledge-count">0 documents</span><button id="reindex-knowledge" type="button">Reindex vectors</button></div></div>
       <section class="knowledge-layout">
         <article class="panel knowledge-upload"><div class="panel-heading"><h2>Upload and index</h2><span>25 MB per file</span></div><form id="knowledge-form">
           <label>Files<input id="knowledge-files" type="file" multiple required></label>
@@ -135,5 +135,5 @@
     </form>
   </aside></div>
   <div id="login-screen" class="login-screen" hidden><form id="login-form" class="login-card"><p class="eyebrow">SECURE DASHBOARD</p><h2>Sign in to MES</h2><p>Use your assigned administrator or operator account.</p><label>Username<input id="login-username" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><span id="login-error" role="alert"></span></form></div>
-  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=14.0"></script>
+  <div id="message" role="status" aria-live="polite"></div><script src="/static/app.js?v=15.0"></script>
 </body></html>

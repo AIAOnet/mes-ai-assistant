@@ -51,3 +51,29 @@ class KnowledgeStoreTests(unittest.TestCase):
         self.assertTrue(self.store.delete(document["id"]))
         self.assertEqual(self.store.list(), [])
         self.assertFalse(self.store.delete(document["id"]))
+
+    def test_hybrid_search_can_retrieve_semantic_match_without_shared_terms(self):
+        class FakeEmbedder:
+            configured = True
+            model = "test-embedding"
+            def embed(self, texts):
+                return [[1.0, 0.0] if any(word in text.lower() for word in ("restart", "reboot"))
+                        else [0.0, 1.0] for text in texts]
+        store = KnowledgeStore(self.temporary.name, FakeEmbedder())
+        store.add("procedure.txt", b"Reboot sequence: isolate energy and inspect the hydraulic circuit")
+        result = store.search("approved restart steps", "operator")
+        self.assertEqual(result[0]["search_mode"], "hybrid")
+        self.assertGreater(result[0]["semantic_score"], 0.9)
+        self.assertTrue(result[0]["document"]["semantic_indexed"])
+        self.assertNotIn("embeddings", result[0]["document"])
+
+    def test_existing_keyword_documents_can_be_vector_reindexed(self):
+        self.store.add("manual.txt", b"Hydraulic maintenance and safe isolation procedure")
+        class FakeEmbedder:
+            configured = True
+            model = "test-embedding"
+            def embed(self, texts): return [[0.5, 0.5] for _ in texts]
+        reloaded = KnowledgeStore(self.temporary.name, FakeEmbedder())
+        self.assertEqual(reloaded.status()["pending_documents"], 1)
+        self.assertEqual(reloaded.reindex(), 1)
+        self.assertEqual(reloaded.status()["embedded_documents"], 1)
