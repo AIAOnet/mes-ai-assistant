@@ -29,9 +29,26 @@ On macOS or Linux, replace the copy command with:
 cp .env.example .env
 ```
 
+### Configure `.env`
+
+The values copied from `.env.example` are simulation-only defaults, so no
+changes are required to run the project locally. To enable the AI assistant,
+open `.env` and set these values for your OpenAI-compatible provider:
+
+```dotenv
+MES_AI_API_ENDPOINT=https://your-provider.example/v1/chat/completions
+MES_AI_API_KEY=your-api-key
+MES_AI_MODEL=your-model-name
+```
+
+Leave the optional `MES_RAG_EMBEDDING_*` values blank to use the same provider
+configuration where supported. If the dashboard will be accessible from any
+other computer, replace all demo passwords and `MES_DASHBOARD_SECRET` before
+changing `MES_BIND_ADDRESS` from `127.0.0.1`.
+
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) after the containers become healthy.
 
-The included credentials are simulation-only defaults. Keep the application bound to localhost unless you replace them. Add your own AI provider endpoint, API key, and model to `.env` to enable the assistant.
+The included credentials are simulation-only defaults. Keep the application bound to localhost unless you replace them.
 
 ## Verify the installation
 
