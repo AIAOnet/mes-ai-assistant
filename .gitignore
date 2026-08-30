@@ -7,3 +7,6 @@ certs/mqtt/
 mqtt/passwords
 *.log
 backups/
+MES_AI_Assistant.md
+README-development.md
+docs/
