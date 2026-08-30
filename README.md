@@ -12,16 +12,6 @@ A local MES factory simulation that demonstrates how machine data can flow throu
 - Role-based access and an OpenAI-compatible assistant
 - Retrieval-augmented generation (RAG) and ontology search
 
-## Test before startup
-
-The local test environment is optional for users who only want to run the Docker simulation.
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-```
-
 ## Quick start
 
 Requirements: Docker Desktop with Docker Compose.
@@ -51,4 +41,14 @@ docker compose ps
 
 The SQL Server, MQTT broker, and dashboard services should report as healthy. OPC UA and MQTT certificates and the broker password file are generated automatically in Docker volumes during first startup.
 
-See `README.md` and the `docs/` directory for architecture, configuration, operations, and developer documentation.
+Additional architecture, configuration, operations, and developer documentation is maintained locally.
+
+## Test before startup
+
+The local test environment is optional for users who only want to run the Docker simulation.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
