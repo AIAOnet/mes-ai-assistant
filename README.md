@@ -73,6 +73,52 @@ Password: Admin-Demo-2026!
 Additional operator, maintenance, engineer, manager, and viewer accounts are
 defined in `.env`. These accounts are for the local simulation only.
 
+## Try the RAG demo
+
+The repository includes
+[`RAG_Demo_Machine_01_High_Pressure_Procedure.md`](RAG_Demo_Machine_01_High_Pressure_Procedure.md)
+as demonstration content for testing document retrieval and ontology search.
+
+Sign in as an administrator, open **Knowledge → RAG**, and upload the file with
+the following metadata:
+
+- Title: `Machine 01 High-Pressure Response Procedure`
+- Version: `1.0`
+- Machine: `MACHINE-01`
+- Alarm type: `HIGH_PRESSURE`
+- Assistant access: select the roles that may retrieve the procedure
+
+Select **Upload & index**, then test retrieval with questions such as:
+
+- What should I do when hydraulic pressure is too high?
+- When can Machine 01 be restarted?
+- How should stored hydraulic energy be handled during maintenance?
+
+Keyword retrieval works without an embedding provider. When the embedding
+settings in `.env` are configured, new uploads are also indexed for semantic
+search. Use **Reindex vectors** to add embeddings to documents that were
+uploaded before the embedding provider was configured.
+
+### Create ontology triples
+
+The upload metadata automatically creates relationships from `MACHINE-01` and
+`ALARM-TYPE:HIGH_PRESSURE` to the uploaded procedure. Manual triples are
+optional and can describe additional domain relationships.
+
+Open **Knowledge → Ontology** as an administrator. A triple has the form
+`subject → predicate → object`. Add these example triples one at a time:
+
+| Subject | Predicate | Object |
+| --- | --- | --- |
+| `MACHINE-01` | `HAS_COMPONENT` | `HYDRAULIC-CIRCUIT-01` |
+| `PRESSURE-SENSOR-01` | `MONITORS` | `HYDRAULIC-CIRCUIT-01` |
+| `ALARM-TYPE:HIGH_PRESSURE` | `AFFECTS` | `HYDRAULIC-CIRCUIT-01` |
+
+Entity identifiers may contain letters, numbers, `.`, `:`, `_`, and `-`.
+Predicates are stored in uppercase with underscores. After adding the triples,
+search for `everything related to the pressure problem on Machine 01` and use a
+depth of two hops to inspect the connected graph.
+
 ## Verify the installation
 
 ```powershell
