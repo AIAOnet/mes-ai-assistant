@@ -2,6 +2,8 @@
 
 A local MES factory simulation that demonstrates how machine data can flow through industrial communication, persistence, monitoring, and a governed AI assistant.
 
+![MES AI Assistant dashboard](dashboard-preview.png)
+
 ## Included components
 
 - Machine and PLC simulation
@@ -59,6 +61,18 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) after the containers become 
 
 The included credentials are simulation-only defaults. Keep the application bound to localhost unless you replace them.
 
+## Sign in
+
+Use the default administrator account from `.env.example`:
+
+```text
+Username: admin
+Password: Admin-Demo-2026!
+```
+
+Additional operator, maintenance, engineer, manager, and viewer accounts are
+defined in `.env`. These accounts are for the local simulation only.
+
 ## Verify the installation
 
 ```powershell
@@ -67,14 +81,57 @@ docker compose ps
 
 The SQL Server, MQTT broker, and dashboard services should report as healthy. OPC UA and MQTT certificates and the broker password file are generated automatically in Docker volumes during first startup.
 
-Additional architecture, configuration, operations, and developer documentation is maintained locally.
+## Manage the containers
 
-## Test startup
+Follow the dashboard logs:
+
+```powershell
+docker compose logs -f dashboard
+```
+
+Stop the project without deleting its data:
+
+```powershell
+docker compose down
+```
+
+After changing `.env` or application files, rebuild and restart:
+
+```powershell
+docker compose up -d --build
+```
+
+To completely reset the simulation:
+
+```powershell
+docker compose down -v
+docker compose up -d --build
+```
+
+> **Warning:** `docker compose down -v` permanently deletes the simulated SQL
+> data, indexed knowledge, generated certificates, and MQTT credentials stored
+> in Docker volumes.
+
+For deployment and security checks, see
+[Production readiness](PRODUCTION_READINESS.md). Additional development
+documentation is maintained locally and is not included in the repository.
+
+## Run the tests
 
 The local test environment is optional for users who only want to run the Docker simulation.
+
+Windows PowerShell:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+macOS or Linux:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m unittest discover -s tests -v
 ```
