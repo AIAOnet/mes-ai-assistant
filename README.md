@@ -41,10 +41,19 @@ MES_AI_API_KEY=your-api-key
 MES_AI_MODEL=your-model-name
 ```
 
-Leave the optional `MES_RAG_EMBEDDING_*` values blank to use the same provider
-configuration where supported. If the dashboard will be accessible from any
-other computer, replace all demo passwords and `MES_DASHBOARD_SECRET` before
-changing `MES_BIND_ADDRESS` from `127.0.0.1`.
+To enable semantic RAG and ontology search, also configure an embeddings model:
+
+```dotenv
+MES_RAG_EMBEDDING_ENDPOINT=https://your-provider.example/v1/embeddings
+MES_RAG_EMBEDDING_API_KEY=your-api-key
+MES_RAG_EMBEDDING_MODEL=your-embedding-model-name
+```
+
+`MES_RAG_EMBEDDING_API_KEY` may be left blank when the embedding service uses
+the same key as `MES_AI_API_KEY`. If all embedding settings are left blank, the
+knowledge base still works using keyword search. If the dashboard will be
+accessible from any other computer, replace all demo passwords and
+`MES_DASHBOARD_SECRET` before changing `MES_BIND_ADDRESS` from `127.0.0.1`.
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) after the containers become healthy.
 
