@@ -10,7 +10,7 @@
   "simulation_update_interval": 1.0,
   "production_interval_ticks": 5,
   "opc_endpoint": "opc.tcp://127.0.0.1:4840/mes-simulator/",
-  "communication_mode": "MQTT",
+  "communication_mode": "OPC_UA",
   "mqtt_broker_host": "127.0.0.1",
   "mqtt_broker_port": 8883,
   "mqtt_topic_prefix": "factory/machine-01",

@@ -23,8 +23,10 @@ Check ([bool]$environment['MES_MQTT_PASSWORD']) 'MQTT password is configured'
 $trackedSecrets = git -c safe.directory=$projectRoot ls-files .env certs mqtt/passwords backups
 Check ($LASTEXITCODE -eq 0 -and ($trackedSecrets | Measure-Object).Count -eq 0) 'Runtime secrets and backups are not tracked by Git'
 
-$requiredCertificates = @('certs/opc/client.der','certs/opc/client.pem','certs/opc/server.der','certs/opc/server.pem','certs/mqtt/mqtt-ca.crt','certs/mqtt/mqtt-client.crt','certs/mqtt/mqtt-client.key','certs/mqtt/mqtt-server.crt','certs/mqtt/mqtt-server.key')
-Check (-not ($requiredCertificates | Where-Object { -not (Test-Path -LiteralPath $_) })) 'OPC UA and MQTT certificate files are present'
+$certificateCheck = docker compose exec -T dashboard sh -c 'test -f certs/opc/client.der && test -f certs/opc/client.pem && test -f certs/opc/server.der && test -f certs/opc/server.pem && test -f certs/mqtt/mqtt-ca.crt && test -f certs/mqtt/mqtt-client.crt && test -f certs/mqtt/mqtt-client.key && test -f certs/mqtt/mqtt-server.crt && test -f certs/mqtt/mqtt-server.key' 2>$null
+Check ($LASTEXITCODE -eq 0) 'OPC UA and MQTT certificate files are present in Docker volumes'
+$passwordCheck = docker compose exec -T mqtt-broker sh -c 'test -s /mosquitto/auth/passwords' 2>$null
+Check ($LASTEXITCODE -eq 0) 'MQTT password file is present in its Docker volume'
 
 docker compose config --quiet
 Check ($LASTEXITCODE -eq 0) 'Docker Compose configuration is valid'

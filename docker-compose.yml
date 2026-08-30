@@ -1,3 +1,5 @@
+name: epiroc
+
 x-logging: &default-logging
   driver: json-file
   options:
@@ -5,6 +7,33 @@ x-logging: &default-logging
     max-file: "5"
 
 services:
+  opc-certificates-init:
+    build: .
+    command: ["sh", "-c", "if [ ! -f /app/certs/opc/.initialized ]; then python -m opc.certificates && touch /app/certs/opc/.initialized; fi"]
+    volumes:
+      - opc-certs:/app/certs/opc
+    restart: "no"
+    logging: *default-logging
+
+  mqtt-certificates-init:
+    build: .
+    command: ["sh", "-c", "if [ ! -f /app/certs/mqtt/.initialized ]; then python -m mqtt.certificates && touch /app/certs/mqtt/.initialized; fi"]
+    volumes:
+      - mqtt-certs:/app/certs/mqtt
+    restart: "no"
+    logging: *default-logging
+
+  mqtt-credentials-init:
+    image: eclipse-mosquitto:2.0
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["if [ ! -s /mosquitto/auth/passwords ]; then mosquitto_passwd -b -c /mosquitto/auth/passwords mes-client \"$$MES_MQTT_PASSWORD\"; fi; chown 1883:1883 /mosquitto/auth/passwords; chmod 600 /mosquitto/auth/passwords"]
+    environment:
+      MES_MQTT_PASSWORD: "${MES_MQTT_PASSWORD:?Copy .env.example to .env and set MES_MQTT_PASSWORD}"
+    volumes:
+      - mqtt-auth:/mosquitto/auth
+    restart: "no"
+    logging: *default-logging
+
   sql-server:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: mes-sql-server
@@ -31,8 +60,8 @@ services:
       - "${MES_BIND_ADDRESS:-127.0.0.1}:8883:8883"
     volumes:
       - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - ./mqtt/passwords:/mosquitto/config/passwords
-      - ./certs/mqtt:/mosquitto/certs:ro
+      - mqtt-auth:/mosquitto/auth:ro
+      - mqtt-certs:/mosquitto/certs:ro
     environment:
       MES_MQTT_PASSWORD: "${MES_MQTT_PASSWORD}"
     healthcheck:
@@ -41,6 +70,11 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
+    depends_on:
+      mqtt-certificates-init:
+        condition: service_completed_successfully
+      mqtt-credentials-init:
+        condition: service_completed_successfully
     logging: *default-logging
 
   database-init:
@@ -67,13 +101,15 @@ services:
       MES_MQTT_HOST: "mqtt-broker"
       MES_MQTT_PORT: "8883"
     ports:
-      - "${MES_BIND_ADDRESS:-127.0.0.1}:8000:8000"
+      - "${MES_BIND_ADDRESS:-0.0.0.0}:8000:8000"
     volumes:
-      - ./certs/opc:/app/certs/opc:ro
-      - ./certs/mqtt:/app/certs/mqtt:ro
+      - opc-certs:/app/certs/opc:ro
+      - mqtt-certs:/app/certs/mqtt:ro
       - ./config:/app/config
       - mes-rag-data:/app/rag_data
     depends_on:
+      opc-certificates-init:
+        condition: service_completed_successfully
       database-init:
         condition: service_completed_successfully
       mqtt-broker:
@@ -90,3 +126,6 @@ services:
 volumes:
   mes-sql-data:
   mes-rag-data:
+  opc-certs:
+  mqtt-certs:
+  mqtt-auth:
