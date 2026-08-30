@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=14.0"><link rel="stylesheet" href="/static/assistant-phase3.css?v=2.0"><link rel="stylesheet" href="/static/rag.css?v=4.0">
+  <title>MES Factory Simulation</title><link rel="stylesheet" href="/static/styles.css?v=15.0"><link rel="stylesheet" href="/static/assistant-phase3.css?v=2.0"><link rel="stylesheet" href="/static/rag.css?v=4.0">
 </head>
 <body>
   <header><div><p class="eyebrow">MES LEARNING ENVIRONMENT</p><h1>MACHINE-01</h1></div><div class="header-actions"><div class="identity" id="identity" hidden><span id="identity-name">—</span><small id="identity-role">—</small><button id="logout">Sign out</button></div><div class="connection"><span id="connection-dot"></span><span id="connection">Connecting…</span></div></div></header>
@@ -92,7 +92,7 @@
         <fieldset><legend>Pressure thresholds</legend><label>Warning (bar)<input id="pressure-warning" type="number" min="0" step="0.1" required></label><label>Critical (bar)<input id="pressure-critical" type="number" min="0.1" step="0.1" required></label></fieldset>
         <fieldset><legend>Temperature thresholds</legend><label>Warning (°C)<input id="temperature-warning" type="number" min="0" step="0.1" required></label><label>Critical (°C)<input id="temperature-critical" type="number" min="0.1" step="0.1" required></label></fieldset>
         <fieldset><legend>Simulation</legend><label>Update interval (seconds)<input id="update-interval" type="number" min="0.05" max="60" step="0.05" required></label><label>Ticks per produced unit<input id="production-interval" type="number" min="1" max="3600" step="1" required></label></fieldset>
-        <fieldset><legend>Communication</legend><label>OPC UA endpoint<input id="opc-endpoint" type="text" required></label><label>Default mode<select id="communication-mode"><option value="OPC_UA">OPC UA</option><option value="MQTT">MQTT</option></select></label><label>MQTT broker host<input id="mqtt-host" type="text" required></label><label>MQTT broker port<input id="mqtt-port" type="number" min="1" max="65535" required></label><label>MQTT topic prefix<input id="mqtt-prefix" type="text" required></label><small>Broker and endpoint changes require restarting the web application.</small></fieldset>
+        <fieldset class="communication-settings"><legend>Communication</legend><label class="wide-setting">OPC UA endpoint<input id="opc-endpoint" type="text" required></label><label>Default mode<select id="communication-mode"><option value="OPC_UA">OPC UA</option><option value="MQTT">MQTT</option></select></label><label>MQTT broker host<input id="mqtt-host" type="text" required></label><label>MQTT broker port<input id="mqtt-port" type="number" min="1" max="65535" required></label><label class="wide-setting">MQTT topic prefix<input id="mqtt-prefix" type="text" required></label><small>Broker and endpoint changes require restarting the web application.</small></fieldset>
         <div class="config-actions"><button type="submit">Save configuration</button><span id="config-error" role="alert"></span></div>
       </form>
     </section>
