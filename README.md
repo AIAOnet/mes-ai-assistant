@@ -43,7 +43,7 @@ The SQL Server, MQTT broker, and dashboard services should report as healthy. OP
 
 Additional architecture, configuration, operations, and developer documentation is maintained locally.
 
-## Test before startup
+## Test startup
 
 The local test environment is optional for users who only want to run the Docker simulation.
 
