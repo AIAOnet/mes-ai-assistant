@@ -67,8 +67,6 @@ class AssistantOrchestrator:
             return QueryPlan(AssistantMode.DATA, Intent.INVESTIGATION, "investigate_machine_stop", {
                 "machine_id": machine_id or "MACHINE-01", "period": period or "today",
             }, context_data)
-        if operational and re.search(r"\b(why|cause|caused|root cause)\b", text):
-            return QueryPlan(AssistantMode.DATA, Intent.UNSUPPORTED_OPERATIONAL, context=context_data)
         if re.search(r"\bdowntime\b|how long.*(?:stop|stopped)", text):
             return QueryPlan(AssistantMode.DATA, Intent.DOWNTIME, "get_downtime", {
                 "machine_id": machine_id or "MACHINE-01", "period": period or "today",
@@ -87,9 +85,9 @@ class AssistantOrchestrator:
                 "machine_id": machine_id or "MACHINE-01", "metric": metric_match.group(1).replace(" ", "_"),
                 "period": period or "last_1_hours",
             }, context_data)
-        if re.search(r"\bmaintenance\b|\btasks?\b", text) and period:
+        if re.search(r"\bmaintenance\b|\btasks?\b", text):
             return QueryPlan(AssistantMode.DATA, Intent.MAINTENANCE_HISTORY, "get_maintenance_history",
-                             {"machine_id": machine_id or "MACHINE-01", "period": period}, context_data)
+                             {"machine_id": machine_id or "MACHINE-01", "period": period or "today"}, context_data)
         if re.search(r"\bevents?\b", text) and period:
             return QueryPlan(AssistantMode.DATA, Intent.EVENT_HISTORY, "search_events",
                              {"machine_id": machine_id or "MACHINE-01", "period": period}, context_data)
@@ -133,8 +131,6 @@ class AssistantOrchestrator:
         if re.search(r"\bpressure\b|\btemperature\b|\brpm\b|machine\s+(status|state)|what is happening", text):
             return QueryPlan(AssistantMode.DATA, Intent.CURRENT_MACHINE_STATUS, "get_machine_status",
                              {"machine_id": machine_id or "MACHINE-01"}, context_data)
-        if operational and re.search(r"\b(stop|stopped|why|downtime|maintenance|history|trend|compare)\b", text):
-            return QueryPlan(AssistantMode.DATA, Intent.UNSUPPORTED_OPERATIONAL, context=context_data)
         return QueryPlan(AssistantMode.ASK, Intent.GENERAL_KNOWLEDGE, context=context_data)
 
     def execute(self, plan: QueryPlan, role: str = "viewer") -> ToolResult | None:

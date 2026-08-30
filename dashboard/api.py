@@ -442,17 +442,7 @@ async def assistant_chat(chat_request: AssistantChatRequest, request: Request) -
         conversation_key = assistant_conversation_key(request, chat_request.conversation_id)
         page_context = PageContext(**chat_request.context.model_dump()) if chat_request.context else None
         plan = assistant_orchestrator.plan(message, page_context, conversation_key)
-        if plan.intent == Intent.UNSUPPORTED_OPERATIONAL:
-            answer = (
-                "That operational question requires investigation tools that are not available "
-                "until Phase 6. I will not infer a cause from correlation alone."
-            )
-            assistant_service.remember_exchange(conversation_key, message, answer)
-            model = None
-            tool_result = None
-            validation = {"status": "NOT_APPLICABLE", "score": None, "checks": {},
-                          "warnings": [], "verified_sources": []}
-        elif plan.mode == AssistantMode.DATA:
+        if plan.mode == AssistantMode.DATA:
             if plan.tool in {"search_knowledge", "search_ontology"}:
                 tool_result = await asyncio.to_thread(
                     assistant_orchestrator.execute, plan, request_role(request)

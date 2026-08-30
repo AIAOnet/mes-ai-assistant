@@ -255,9 +255,15 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(stop.tool, "investigate_machine_stop")
         self.assertEqual(alarm.tool, "investigate_alarm")
 
-    def test_generic_causal_question_still_fails_closed(self):
+    def test_generic_oee_causal_question_uses_available_oee_data(self):
         plan = self.orchestrator.plan("What caused the OEE to decrease?")
-        self.assertEqual(plan.intent, Intent.UNSUPPORTED_OPERATIONAL)
+        self.assertEqual((plan.intent, plan.tool), (Intent.OEE, "get_oee"))
+
+    def test_maintenance_question_without_period_defaults_to_today(self):
+        plan = self.orchestrator.plan("Do we have any maintenance tasks and why?")
+        self.assertEqual((plan.intent, plan.tool),
+                         (Intent.MAINTENANCE_HISTORY, "get_maintenance_history"))
+        self.assertEqual(plan.arguments["period"], "today")
 
 
 if __name__ == "__main__":

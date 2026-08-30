@@ -74,7 +74,7 @@ class AssistantService:
             flags=re.IGNORECASE | re.DOTALL,
         ).strip()
         if not answer:
-            answer = "The model returned no answer. The verified MES evidence is available in the references."
+            answer = "The model returned no answer. Reformulate the question or try again later."
         validation = GroundingValidator.validate(answer, tool_context)
         self.store.replace(key, [*history, ModelMessage("user", question),
                                  ModelMessage("assistant", answer)])
