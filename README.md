@@ -181,3 +181,10 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m unittest discover -s tests -v
 ```
+
+## License
+
+This project is available under the
+[PolyForm Noncommercial License 1.0.0](LICENSE.md). You may use, modify, and
+distribute it for permitted non-commercial purposes. Commercial use is not
+permitted without a separate license from the repository owner.
